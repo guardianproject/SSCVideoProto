@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/Users/vanevery/Desktop/Work/Witness/ffmpeg-android/ffmpeg
+
+Name: libavcore
+Description: FFmpeg multimedia shared core utilities library
+Version: 0.16.0
+Requires: libavutil = 50.34.0
+Conflicts:
+Libs: ${libdir}/libavcore.a 
+Cflags: -I${includedir}

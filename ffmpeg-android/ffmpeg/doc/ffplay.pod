@@ -1,0 +1,2711 @@
+=head1 NAME
+
+ffplay - FFplay media player
+
+=head1 SYNOPSIS
+
+ffplay [options] F<input_file>
+
+=head1 DESCRIPTION
+
+
+FFplay is a very simple and portable media player using the FFmpeg
+libraries and the SDL library. It is mostly used as a testbed for the
+various FFmpeg APIs.
+
+=head1 OPTIONS
+
+
+All the numerical options, if not specified otherwise, accept in input
+a string representing a number, which may contain one of the
+International System number postfixes, for example 'K', 'M', 'G'.
+If 'i' is appended after the postfix, powers of 2 are used instead of
+powers of 10. The 'B' postfix multiplies the value for 8, and can be
+appended after another postfix or used alone. This allows using for
+example 'KB', 'MiB', 'G' and 'B' as postfix.
+
+Options which do not take arguments are boolean options, and set the
+corresponding value to true. They can be set to false by prefixing
+with "no" the option name, for example using "-nofoo" in the
+commandline will set to false the boolean option with name "foo".
+
+
+=head2 Generic options
+
+
+These options are shared amongst the ff* tools.
+
+
+=over 4
+
+
+
+=item B<-L>
+
+Show license.
+
+
+=item B<-h, -?, -help, --help>
+
+Show help.
+
+
+=item B<-version>
+
+Show version.
+
+
+=item B<-formats>
+
+Show available formats.
+
+The fields preceding the format names have the following meanings:
+
+=over 4
+
+
+=item B<D>
+
+Decoding available
+
+=item B<E>
+
+Encoding available
+
+=back
+
+
+
+=item B<-codecs>
+
+Show available codecs.
+
+The fields preceding the codec names have the following meanings:
+
+=over 4
+
+
+=item B<D>
+
+Decoding available
+
+=item B<E>
+
+Encoding available
+
+=item B<V/A/S>
+
+Video/audio/subtitle codec
+
+=item B<S>
+
+Codec supports slices
+
+=item B<D>
+
+Codec supports direct rendering
+
+=item B<T>
+
+Codec can handle input truncated at random locations instead of only at frame boundaries
+
+=back
+
+
+
+=item B<-bsfs>
+
+Show available bitstream filters.
+
+
+=item B<-protocols>
+
+Show available protocols.
+
+
+=item B<-filters>
+
+Show available libavfilter filters.
+
+
+=item B<-pix_fmts>
+
+Show available pixel formats.
+
+
+=item B<-loglevel> I<loglevel>
+
+Set the logging level used by the library.
+I<loglevel> is a number or a string containing one of the following values:
+
+=over 4
+
+
+=item B<quiet>
+
+
+=item B<panic>
+
+
+=item B<fatal>
+
+
+=item B<error>
+
+
+=item B<warning>
+
+
+=item B<info>
+
+
+=item B<verbose>
+
+
+=item B<debug>
+
+
+=back
+
+
+By default the program logs to stderr, if coloring is supported by the
+terminal, colors are used to mark errors and warnings. Log coloring
+can be disabled setting the environment variable
+B<FFMPEG_FORCE_NOCOLOR> or B<NO_COLOR>, or can be forced setting
+the environment variable B<FFMPEG_FORCE_COLOR>.
+The use of the environment variable B<NO_COLOR> is deprecated and
+will be dropped in a following FFmpeg version.
+
+
+=back
+
+
+
+=head2 Main options
+
+
+
+=over 4
+
+
+=item B<-x> I<width>
+
+Force displayed width.
+
+=item B<-y> I<height>
+
+Force displayed height.
+
+=item B<-s> I<size>
+
+Set frame size (WxH or abbreviation), needed for videos which don't
+contain a header with the frame size like raw YUV.
+
+=item B<-an>
+
+Disable audio.
+
+=item B<-vn>
+
+Disable video.
+
+=item B<-ss> I<pos>
+
+Seek to a given position in seconds.
+
+=item B<-t> I<duration>
+
+play E<lt>durationE<gt> seconds of audio/video
+
+=item B<-bytes>
+
+Seek by bytes.
+
+=item B<-nodisp>
+
+Disable graphical display.
+
+=item B<-f> I<fmt>
+
+Force format.
+
+=item B<-window_title> I<title>
+
+Set window title (default is the input filename).
+
+=item B<-loop> I<number>
+
+Loops movie playback E<lt>numberE<gt> times. 0 means forever.
+
+=item B<-vf> I<filter_graph>
+
+I<filter_graph> is a description of the filter graph to apply to
+the input video.
+Use the option "-filters" to show all the available filters (including
+also sources and sinks).
+
+
+=back
+
+
+
+=head2 Advanced options
+
+
+=over 4
+
+
+=item B<-pix_fmt> I<format>
+
+Set pixel format.
+
+=item B<-stats>
+
+Show the stream duration, the codec parameters, the current position in
+the stream and the audio/video synchronisation drift.
+
+=item B<-debug>
+
+Print specific debug info.
+
+=item B<-bug>
+
+Work around bugs.
+
+=item B<-vismv>
+
+Visualize motion vectors.
+
+=item B<-fast>
+
+Non-spec-compliant optimizations.
+
+=item B<-genpts>
+
+Generate pts.
+
+=item B<-rtp_tcp>
+
+Force RTP/TCP protocol usage instead of RTP/UDP. It is only meaningful
+if you are streaming with the RTSP protocol.
+
+=item B<-sync> I<type>
+
+Set the master clock to audio (C<type=audio>), video
+(C<type=video>) or external (C<type=ext>). Default is audio. The
+master clock is used to control audio-video synchronization. Most media
+players use audio as master clock, but in some cases (streaming or high
+quality broadcast) it is necessary to change that. This option is mainly
+used for debugging purposes.
+
+=item B<-threads> I<count>
+
+Set the thread count.
+
+=item B<-ast> I<audio_stream_number>
+
+Select the desired audio stream number, counting from 0. The number
+refers to the list of all the input audio streams. If it is greater
+than the number of audio streams minus one, then the last one is
+selected, if it is negative the audio playback is disabled.
+
+=item B<-vst> I<video_stream_number>
+
+Select the desired video stream number, counting from 0. The number
+refers to the list of all the input video streams. If it is greater
+than the number of video streams minus one, then the last one is
+selected, if it is negative the video playback is disabled.
+
+=item B<-sst> I<subtitle_stream_number>
+
+Select the desired subtitle stream number, counting from 0. The number
+refers to the list of all the input subtitle streams. If it is greater
+than the number of subtitle streams minus one, then the last one is
+selected, if it is negative the subtitle rendering is disabled.
+
+=item B<-autoexit>
+
+Exit when video is done playing.
+
+=item B<-exitonkeydown>
+
+Exit if any key is pressed.
+
+=item B<-exitonmousedown>
+
+Exit if any mouse button is pressed.
+
+=back
+
+
+
+=head2 While playing
+
+
+
+=over 4
+
+
+=item B<q, ESC>
+
+Quit.
+
+
+=item B<f>
+
+Toggle full screen.
+
+
+=item B<p, SPC>
+
+Pause.
+
+
+=item B<a>
+
+Cycle audio channel.
+
+
+=item B<v>
+
+Cycle video channel.
+
+
+=item B<t>
+
+Cycle subtitle channel.
+
+
+=item B<w>
+
+Show audio waves.
+
+
+=item B<left/right>
+
+Seek backward/forward 10 seconds.
+
+
+=item B<down/up>
+
+Seek backward/forward 1 minute.
+
+
+=item B<mouse click>
+
+Seek to percentage in file corresponding to fraction of width.
+
+
+=back
+
+
+
+=head1 EXPRESSION EVALUATION
+
+
+When evaluating an arithemetic expression, FFmpeg uses an internal
+formula evaluator, implemented through the F<libavutil/eval.h>
+interface.
+
+An expression may contain unary, binary operators, constants, and
+functions.
+
+Two expressions I<expr1> and I<expr2> can be combined to form
+another expression "I<expr1>;I<expr2>".
+I<expr1> and I<expr2> are evaluated in turn, and the new
+expression evaluates to the value of I<expr2>.
+
+The following binary operators are available: C<+>, C<->,
+C<*>, C</>, C<^>.
+
+The following unary operators are available: C<+>, C<->.
+
+The following functions are available:
+
+=over 4
+
+
+=item B<sinh(x)>
+
+
+=item B<cosh(x)>
+
+
+=item B<tanh(x)>
+
+
+=item B<sin(x)>
+
+
+=item B<cos(x)>
+
+
+=item B<tan(x)>
+
+
+=item B<atan(x)>
+
+
+=item B<asin(x)>
+
+
+=item B<acos(x)>
+
+
+=item B<exp(x)>
+
+
+=item B<log(x)>
+
+
+=item B<abs(x)>
+
+
+=item B<squish(x)>
+
+
+=item B<gauss(x)>
+
+
+=item B<isnan(x)>
+
+Return 1.0 if I<x> is NAN, 0.0 otherwise.
+
+
+=item B<mod(x, y)>
+
+
+=item B<max(x, y)>
+
+
+=item B<min(x, y)>
+
+
+=item B<eq(x, y)>
+
+
+=item B<gte(x, y)>
+
+
+=item B<gt(x, y)>
+
+
+=item B<lte(x, y)>
+
+
+=item B<lt(x, y)>
+
+
+=item B<st(var, expr)>
+
+Allow to store the value of the expression I<expr> in an internal
+variable. I<var> specifies the number of the variable where to
+store the value, and it is a value ranging from 0 to 9. The function
+returns the value stored in the internal variable.
+
+
+=item B<ld(var)>
+
+Allow to load the value of the internal variable with number
+I<var>, which was previosly stored with st(I<var>, I<expr>).
+The function returns the loaded value.
+
+
+=item B<while(cond, expr)>
+
+Evaluate expression I<expr> while the expression I<cond> is
+non-zero, and returns the value of the last I<expr> evaluation, or
+NAN if I<cond> was always false.
+
+=back
+
+
+Note that:
+
+C<*> works like AND
+
+C<+> works like OR
+
+thus
+	
+	if A then B else C
+
+is equivalent to
+	
+	A*B + not(A)*C
+
+
+When A evaluates to either 1 or 0, that is the same as
+	
+	A*B + eq(A,0)*C
+
+
+In your C code, you can extend the list of unary and binary functions,
+and define recognized constants, so that they are available for your
+expressions.
+
+The evaluator also recognizes the International System number
+postfixes. If 'i' is appended after the postfix, powers of 2 are used
+instead of powers of 10. The 'B' postfix multiplies the value for 8,
+and can be appended after another postfix or used alone. This allows
+using for example 'KB', 'MiB', 'G' and 'B' as postfix.
+
+Follows the list of available International System postfixes, with
+indication of the corresponding powers of 10 and of 2.
+
+=over 4
+
+
+=item B<y>
+
+-24 / -80
+
+=item B<z>
+
+-21 / -70
+
+=item B<a>
+
+-18 / -60
+
+=item B<f>
+
+-15 / -50
+
+=item B<p>
+
+-12 / -40
+
+=item B<n>
+
+-9 / -30
+
+=item B<u>
+
+-6 / -20
+
+=item B<m>
+
+-3 / -10
+
+=item B<c>
+
+-2
+
+=item B<d>
+
+-1
+
+=item B<h>
+
+2
+
+=item B<k>
+
+3 / 10
+
+=item B<K>
+
+3 / 10
+
+=item B<M>
+
+6 / 20
+
+=item B<G>
+
+9 / 30
+
+=item B<T>
+
+12 / 40
+
+=item B<P>
+
+15 / 40
+
+=item B<E>
+
+18 / 50
+
+=item B<Z>
+
+21 / 60
+
+=item B<Y>
+
+24 / 70
+
+=back
+
+
+
+=head1 INPUT DEVICES
+
+
+Input devices are configured elements in FFmpeg which allow to access
+the data coming from a multimedia device attached to your system.
+
+When you configure your FFmpeg build, all the supported input devices
+are enabled by default. You can list all available ones using the
+configure option "--list-indevs".
+
+You can disable all the input devices using the configure option
+"--disable-indevs", and selectively enable an input device using the
+option "--enable-indev=I<INDEV>", or you can disable a particular
+input device using the option "--disable-indev=I<INDEV>".
+
+The option "-formats" of the ff* tools will display the list of
+supported input devices (amongst the demuxers).
+
+A description of the currently available input devices follows.
+
+
+=head2 alsa
+
+
+ALSA (Advanced Linux Sound Architecture) input device.
+
+To enable this input device during configuration you need libasound
+installed on your system.
+
+This device allows capturing from an ALSA device. The name of the
+device to capture has to be an ALSA card identifier.
+
+An ALSA identifier has the syntax:
+	
+	hw:<CARD>[,<DEV>[,<SUBDEV>]]
+
+
+where the I<DEV> and I<SUBDEV> components are optional.
+
+The three arguments (in order: I<CARD>,I<DEV>,I<SUBDEV>)
+specify card number or identifier, device number and subdevice number
+(-1 means any).
+
+To see the list of cards currently recognized by your system check the
+files F</proc/asound/cards> and F</proc/asound/devices>.
+
+For example to capture with F<ffmpeg> from an ALSA device with
+card id 0, you may run the command:
+	
+	ffmpeg -f alsa -i hw:0 alsaout.wav
+
+
+For more information see:
+E<lt>B<http://www.alsa-project.org/alsa-doc/alsa-lib/pcm.html>E<gt>
+
+
+=head2 bktr
+
+
+BSD video input device.
+
+
+=head2 dv1394
+
+
+Linux DV 1394 input device.
+
+
+=head2 jack
+
+
+JACK input device.
+
+To enable this input device during configuration you need libjack
+installed on your system.
+
+A JACK input device creates one or more JACK writable clients, one for
+each audio channel, with name I<client_name>:input_I<N>, where
+I<client_name> is the name provided by the application, and I<N>
+is a number which identifies the channel.
+Each writable client will send the acquired data to the FFmpeg input
+device.
+
+Once you have created one or more JACK readable clients, you need to
+connect them to one or more JACK writable clients.
+
+To connect or disconnect JACK clients you can use the
+F<jack_connect> and F<jack_disconnect> programs, or do it
+through a graphical interface, for example with F<qjackctl>.
+
+To list the JACK clients and their properties you can invoke the command
+F<jack_lsp>.
+
+Follows an example which shows how to capture a JACK readable client
+with F<ffmpeg>.
+	
+	# Create a JACK writable client with name "ffmpeg".
+	$ ffmpeg -f jack -i ffmpeg -y out.wav
+	
+	# Start the sample jack_metro readable client.
+	$ jack_metro -b 120 -d 0.2 -f 4000
+	
+	# List the current JACK clients.
+	$ jack_lsp -c
+	system:capture_1
+	system:capture_2
+	system:playback_1
+	system:playback_2
+	ffmpeg:input_1
+	metro:120_bpm
+	
+	# Connect metro to the ffmpeg writable client.
+	$ jack_connect metro:120_bpm ffmpeg:input_1
+
+
+For more information read:
+E<lt>B<http://jackaudio.org/>E<gt>
+
+
+=head2 libdc1394
+
+
+IIDC1394 input device, based on libdc1394 and libraw1394.
+
+
+=head2 oss
+
+
+Open Sound System input device.
+
+The filename to provide to the input device is the device node
+representing the OSS input device, and is usually set to
+F</dev/dsp>.
+
+For example to grab from F</dev/dsp> using F<ffmpeg> use the
+command:
+	
+	ffmpeg -f oss -i /dev/dsp /tmp/oss.wav
+
+
+For more information about OSS see:
+E<lt>B<http://manuals.opensound.com/usersguide/dsp.html>E<gt>
+
+
+=head2 video4linux and video4linux2
+
+
+Video4Linux and Video4Linux2 input video devices.
+
+The name of the device to grab is a file device node, usually Linux
+systems tend to automatically create such nodes when the device
+(e.g. an USB webcam) is plugged into the system, and has a name of the
+kind F</dev/videoI<N>>, where I<N> is a number associated to
+the device.
+
+Video4Linux and Video4Linux2 devices only support a limited set of
+I<width>xI<height> sizes and framerates. You can check which are
+supported for example with the command F<dov4l> for Video4Linux
+devices and the command F<v4l-info> for Video4Linux2 devices.
+
+If the size for the device is set to 0x0, the input device will
+try to autodetect the size to use.
+
+Video4Linux support is deprecated since Linux 2.6.30, and will be
+dropped in later versions.
+
+Follow some usage examples of the video4linux devices with the ff*
+tools.
+	
+	# Grab and show the input of a video4linux device.
+	ffplay -s 320x240 -f video4linux /dev/video0
+	
+	# Grab and show the input of a video4linux2 device, autoadjust size.
+	ffplay -f video4linux2 /dev/video0
+	
+	# Grab and record the input of a video4linux2 device, autoadjust size.
+	ffmpeg -f video4linux2 -i /dev/video0 out.mpeg
+
+
+
+=head2 vfwcap
+
+
+VfW (Video for Windows) capture input device.
+
+The filename passed as input is the capture driver number, ranging from
+0 to 9. You may use "list" as filename to print a list of drivers. Any
+other filename will be interpreted as device number 0.
+
+
+=head2 x11grab
+
+
+X11 video input device.
+
+This device allows to capture a region of an X11 display.
+
+The filename passed as input has the syntax:
+	
+	[<hostname>]:<display_number>.<screen_number>[+<x_offset>,<y_offset>]
+
+
+I<hostname>:I<display_number>.I<screen_number> specifies the
+X11 display name of the screen to grab from. I<hostname> can be
+ommitted, and defaults to "localhost". The environment variable
+B<DISPLAY> contains the default display name.
+
+I<x_offset> and I<y_offset> specify the offsets of the grabbed
+area with respect to the top-left border of the X11 screen. They
+default to 0.
+
+Check the X11 documentation (e.g. man X) for more detailed information.
+
+Use the F<dpyinfo> program for getting basic information about the
+properties of your X11 display (e.g. grep for "name" or "dimensions").
+
+For example to grab from F<:0.0> using F<ffmpeg>:
+	
+	ffmpeg -f x11grab -r 25 -s cif -i :0.0 out.mpg
+	
+	# Grab at position 10,20.
+	ffmpeg -f x11grab -25 -s cif -i :0.0+10,20 out.mpg
+
+
+
+=head1 OUTPUT DEVICES
+
+
+Output devices are configured elements in FFmpeg which allow to write
+multimedia data to an output device attached to your system.
+
+When you configure your FFmpeg build, all the supported output devices
+are enabled by default. You can list all available ones using the
+configure option "--list-outdevs".
+
+You can disable all the output devices using the configure option
+"--disable-outdevs", and selectively enable an output device using the
+option "--enable-outdev=I<OUTDEV>", or you can disable a particular
+input device using the option "--disable-outdev=I<OUTDEV>".
+
+The option "-formats" of the ff* tools will display the list of
+enabled output devices (amongst the muxers).
+
+A description of the currently available output devices follows.
+
+
+=head2 alsa
+
+
+ALSA (Advanced Linux Sound Architecture) output device.
+
+
+=head2 oss
+
+
+OSS (Open Sound System) output device.
+
+
+=head1 PROTOCOLS
+
+
+Protocols are configured elements in FFmpeg which allow to access
+resources which require the use of a particular protocol.
+
+When you configure your FFmpeg build, all the supported protocols are
+enabled by default. You can list all available ones using the
+configure option "--list-protocols".
+
+You can disable all the protocols using the configure option
+"--disable-protocols", and selectively enable a protocol using the
+option "--enable-protocol=I<PROTOCOL>", or you can disable a
+particular protocol using the option
+"--disable-protocol=I<PROTOCOL>".
+
+The option "-protocols" of the ff* tools will display the list of
+supported protocols.
+
+A description of the currently available protocols follows.
+
+
+=head2 concat
+
+
+Physical concatenation protocol.
+
+Allow to read and seek from many resource in sequence as if they were
+a unique resource.
+
+A URL accepted by this protocol has the syntax:
+	
+	concat:<URL1>|<URL2>|...|<URLN>
+
+
+where I<URL1>, I<URL2>, ..., I<URLN> are the urls of the
+resource to be concatenated, each one possibly specifying a distinct
+protocol.
+
+For example to read a sequence of files F<split1.mpeg>,
+F<split2.mpeg>, F<split3.mpeg> with F<ffplay> use the
+command:
+	
+	ffplay concat:split1.mpeg\|split2.mpeg\|split3.mpeg
+
+
+Note that you may need to escape the character "|" which is special for
+many shells.
+
+
+=head2 file
+
+
+File access protocol.
+
+Allow to read from or read to a file.
+
+For example to read from a file F<input.mpeg> with F<ffmpeg>
+use the command:
+	
+	ffmpeg -i file:input.mpeg output.mpeg
+
+
+The ff* tools default to the file protocol, that is a resource
+specified with the name "FILE.mpeg" is interpreted as the URL
+"file:FILE.mpeg".
+
+
+=head2 gopher
+
+
+Gopher protocol.
+
+
+=head2 http
+
+
+HTTP (Hyper Text Transfer Protocol).
+
+
+=head2 mmst
+
+
+MMS (Microsoft Media Server) protocol over TCP.
+
+
+=head2 mmsh
+
+
+MMS (Microsoft Media Server) protocol over HTTP.
+
+The required syntax is:
+	
+	mmsh://<server>[:<port>][/<app>][/<playpath>]
+
+
+
+=head2 md5
+
+
+MD5 output protocol.
+
+Computes the MD5 hash of the data to be written, and on close writes
+this to the designated output or stdout if none is specified. It can
+be used to test muxers without writing an actual file.
+
+Some examples follow.
+	
+	# Write the MD5 hash of the encoded AVI file to the file output.avi.md5.
+	ffmpeg -i input.flv -f avi -y md5:output.avi.md5
+	
+	# Write the MD5 hash of the encoded AVI file to stdout.
+	ffmpeg -i input.flv -f avi -y md5:
+
+
+Note that some formats (typically MOV) require the output protocol to
+be seekable, so they will fail with the MD5 output protocol.
+
+
+=head2 pipe
+
+
+UNIX pipe access protocol.
+
+Allow to read and write from UNIX pipes.
+
+The accepted syntax is:
+	
+	pipe:[<number>]
+
+
+I<number> is the number corresponding to the file descriptor of the
+pipe (e.g. 0 for stdin, 1 for stdout, 2 for stderr).  If I<number>
+is not specified, by default the stdout file descriptor will be used
+for writing, stdin for reading.
+
+For example to read from stdin with F<ffmpeg>:
+	
+	cat test.wav | ffmpeg -i pipe:0
+	# ...this is the same as...
+	cat test.wav | ffmpeg -i pipe:
+
+
+For writing to stdout with F<ffmpeg>:
+	
+	ffmpeg -i test.wav -f avi pipe:1 | cat > test.avi
+	# ...this is the same as...
+	ffmpeg -i test.wav -f avi pipe: | cat > test.avi
+
+
+Note that some formats (typically MOV), require the output protocol to
+be seekable, so they will fail with the pipe output protocol.
+
+
+=head2 rtmp
+
+
+Real-Time Messaging Protocol.
+
+The Real-Time Messaging Protocol (RTMP) is used for streaming multime‐
+dia content across a TCP/IP network.
+
+The required syntax is:
+	
+	rtmp://<server>[:<port>][/<app>][/<playpath>]
+
+
+The accepted parameters are:
+
+=over 4
+
+
+
+=item B<server>
+
+The address of the RTMP server.
+
+
+=item B<port>
+
+The number of the TCP port to use (by default is 1935).
+
+
+=item B<app>
+
+It is the name of the application to access. It usually corresponds to
+the path where the application is installed on the RTMP server
+(e.g. F</ondemand/>, F</flash/live/>, etc.).
+
+
+=item B<playpath>
+
+It is the path or name of the resource to play with reference to the
+application specified in I<app>, may be prefixed by "mp4:".
+
+
+=back
+
+
+For example to read with F<ffplay> a multimedia resource named
+"sample" from the application "vod" from an RTMP server "myserver":
+	
+	ffplay rtmp://myserver/vod/sample
+
+
+
+=head2 rtmp, rtmpe, rtmps, rtmpt, rtmpte
+
+
+Real-Time Messaging Protocol and its variants supported through
+librtmp.
+
+Requires the presence of the librtmp headers and library during
+configuration. You need to explicitely configure the build with
+"--enable-librtmp". If enabled this will replace the native RTMP
+protocol.
+
+This protocol provides most client functions and a few server
+functions needed to support RTMP, RTMP tunneled in HTTP (RTMPT),
+encrypted RTMP (RTMPE), RTMP over SSL/TLS (RTMPS) and tunneled
+variants of these encrypted types (RTMPTE, RTMPTS).
+
+The required syntax is:
+	
+	<rtmp_proto>://<server>[:<port>][/<app>][/<playpath>] <options>
+
+
+where I<rtmp_proto> is one of the strings "rtmp", "rtmpt", "rtmpe",
+"rtmps", "rtmpte", "rtmpts" corresponding to each RTMP variant, and
+I<server>, I<port>, I<app> and I<playpath> have the same
+meaning as specified for the RTMP native protocol.
+I<options> contains a list of space-separated options of the form
+I<key>=I<val>.
+
+See the librtmp manual page (man 3 librtmp) for more information.
+
+For example, to stream a file in real-time to an RTMP server using
+F<ffmpeg>:
+	
+	ffmpeg -re -i myfile -f flv rtmp://myserver/live/mystream
+
+
+To play the same stream using F<ffplay>:
+	
+	ffplay "rtmp://myserver/live/mystream live=1"
+
+
+
+=head2 rtp
+
+
+Real-Time Protocol.
+
+
+=head2 rtsp
+
+
+RTSP is not technically a protocol handler in libavformat, it is a demuxer
+and muxer. The demuxer supports both normal RTSP (with data transferred
+over RTP; this is used by e.g. Apple and Microsoft) and Real-RTSP (with
+data transferred over RDT).
+
+The muxer can be used to send a stream using RTSP ANNOUNCE to a server
+supporting it (currently Darwin Streaming Server and Mischa Spiegelmock's
+RTSP server, E<lt>B<http://github.com/revmischa/rtsp-server>E<gt>).
+
+The required syntax for a RTSP url is:
+	
+	rtsp://<hostname>[:<port>]/<path>[?<options>]
+
+
+I<options> is a C<&>-separated list. The following options
+are supported:
+
+
+=over 4
+
+
+
+=item B<udp>
+
+Use UDP as lower transport protocol.
+
+
+=item B<tcp>
+
+Use TCP (interleaving within the RTSP control channel) as lower
+transport protocol.
+
+
+=item B<multicast>
+
+Use UDP multicast as lower transport protocol.
+
+
+=item B<http>
+
+Use HTTP tunneling as lower transport protocol, which is useful for
+passing proxies.
+
+=back
+
+
+Multiple lower transport protocols may be specified, in that case they are
+tried one at a time (if the setup of one fails, the next one is tried).
+For the muxer, only the C<tcp> and C<udp> options are supported.
+
+When receiving data over UDP, the demuxer tries to reorder received packets
+(since they may arrive out of order, or packets may get lost totally). In
+order for this to be enabled, a maximum delay must be specified in the
+C<max_delay> field of AVFormatContext.
+
+When watching multi-bitrate Real-RTSP streams with F<ffplay>, the
+streams to display can be chosen with C<-vst> I<n> and
+C<-ast> I<n> for video and audio respectively, and can be switched
+on the fly by pressing C<v> and C<a>.
+
+Example command lines:
+
+To watch a stream over UDP, with a max reordering delay of 0.5 seconds:
+
+	
+	ffplay -max_delay 500000 rtsp://server/video.mp4?udp
+
+
+To watch a stream tunneled over HTTP:
+
+	
+	ffplay rtsp://server/video.mp4?http
+
+
+To send a stream in realtime to a RTSP server, for others to watch:
+
+	
+	ffmpeg -re -i <input> -f rtsp -muxdelay 0.1 rtsp://server/live.sdp
+
+
+
+=head2 sap
+
+
+Session Announcement Protocol (RFC 2974). This is not technically a
+protocol handler in libavformat, it is a muxer and demuxer.
+It is used for signalling of RTP streams, by announcing the SDP for the
+streams regularly on a separate port.
+
+
+=head3 Muxer
+
+
+The syntax for a SAP url given to the muxer is:
+	
+	sap://<destination>[:<port>][?<options>]
+
+
+The RTP packets are sent to I<destination> on port I<port>,
+or to port 5004 if no port is specified.
+I<options> is a C<&>-separated list. The following options
+are supported:
+
+
+=over 4
+
+
+
+=item B<announce_addr=>I<address>
+
+Specify the destination IP address for sending the announcements to.
+If omitted, the announcements are sent to the commonly used SAP
+announcement multicast address 224.2.127.254 (sap.mcast.net), or
+ff0e::2:7ffe if I<destination> is an IPv6 address.
+
+
+=item B<announce_port=>I<port>
+
+Specify the port to send the announcements on, defaults to
+9875 if not specified.
+
+
+=item B<ttl=>I<ttl>
+
+Specify the time to live value for the announcements and RTP packets,
+defaults to 255.
+
+
+=item B<same_port=>I<0|1>
+
+If set to 1, send all RTP streams on the same port pair. If zero (the
+default), all streams are sent on unique ports, with each stream on a
+port 2 numbers higher than the previous.
+VLC/Live555 requires this to be set to 1, to be able to receive the stream.
+The RTP stack in libavformat for receiving requires all streams to be sent
+on unique ports.
+
+=back
+
+
+Example command lines follow.
+
+To broadcast a stream on the local subnet, for watching in VLC:
+
+	
+	ffmpeg -re -i <input> -f sap sap://224.0.0.255?same_port=1
+
+
+Similarly, for watching in ffplay:
+
+	
+	ffmpeg -re -i <input> -f sap sap://224.0.0.255
+
+
+And for watching in ffplay, over IPv6:
+
+	
+	ffmpeg -re -i <input> -f sap sap://[ff0e::1:2:3:4]
+
+
+
+=head3 Demuxer
+
+
+The syntax for a SAP url given to the demuxer is:
+	
+	sap://[<address>][:<port>]
+
+
+I<address> is the multicast address to listen for announcements on,
+if omitted, the default 224.2.127.254 (sap.mcast.net) is used. I<port>
+is the port that is listened on, 9875 if omitted.
+
+The demuxers listens for announcements on the given address and port.
+Once an announcement is received, it tries to receive that particular stream.
+
+Example command lines follow.
+
+To play back the first stream announced on the normal SAP multicast address:
+
+	
+	ffplay sap://
+
+
+To play back the first stream announced on one the default IPv6 SAP multicast address:
+
+	
+	ffplay sap://[ff0e::2:7ffe]
+
+
+
+=head2 tcp
+
+
+Trasmission Control Protocol.
+
+
+=head2 udp
+
+
+User Datagram Protocol.
+
+The required syntax for a UDP url is:
+	
+	udp://<hostname>:<port>[?<options>]
+
+
+I<options> contains a list of &-seperated options of the form I<key>=I<val>.
+Follow the list of supported options.
+
+
+=over 4
+
+
+
+=item B<buffer_size=>I<size>
+
+set the UDP buffer size in bytes
+
+
+=item B<localport=>I<port>
+
+override the local UDP port to bind with
+
+
+=item B<pkt_size=>I<size>
+
+set the size in bytes of UDP packets
+
+
+=item B<reuse=>I<1|0>
+
+explicitly allow or disallow reusing UDP sockets
+
+
+=item B<ttl=>I<ttl>
+
+set the time to live value (for multicast only)
+
+
+=item B<connect=>I<1|0>
+
+Initialize the UDP socket with C<connect()>. In this case, the
+destination address can't be changed with udp_set_remote_url later.
+This allows finding out the source address for the packets with getsockname,
+and makes writes return with AVERROR(ECONNREFUSED) if "destination
+unreachable" is received.
+
+=back
+
+
+Some usage examples of the udp protocol with F<ffmpeg> follow.
+
+To stream over UDP to a remote endpoint:
+	
+	ffmpeg -i <input> -f <format> udp://<hostname>:<port>
+
+
+To stream in mpegts format over UDP using 188 sized UDP packets, using a large input buffer:
+	
+	ffmpeg -i <input> -f mpegts udp://<hostname>:<port>?pkt_size=188&buffer_size=65535
+
+
+To receive over UDP from a remote endpoint:
+	
+	ffmpeg -i udp://[<multicast-address>]:<port>
+
+
+
+=head1 FILTERGRAPH DESCRIPTION
+
+
+A filtergraph is a directed graph of connected filters. It can contain
+cycles, and there can be multiple links between a pair of
+filters. Each link has one input pad on one side connecting it to one
+filter from which it takes its input, and one output pad on the other
+side connecting it to the one filter accepting its output.
+
+Each filter in a filtergraph is an instance of a filter class
+registered in the application, which defines the features and the
+number of input and output pads of the filter.
+
+A filter with no input pads is called a "source", a filter with no
+output pads is called a "sink".
+
+
+=head2 Filtergraph syntax
+
+
+A filtergraph can be represented using a textual representation, which
+is recognized by the C<-vf> and C<-af> options of the ff*
+tools, and by the C<av_parse_graph()> function defined in
+F<libavfilter/avfiltergraph>.
+
+A filterchain consists of a sequence of connected filters, each one
+connected to the previous one in the sequence. A filterchain is
+represented by a list of ","-separated filter descriptions.
+
+A filtergraph consists of a sequence of filterchains. A sequence of
+filterchains is represented by a list of ";"-separated filterchain
+descriptions.
+
+A filter is represented by a string of the form:
+[I<in_link_1>]...[I<in_link_N>]I<filter_name>=I<arguments>[I<out_link_1>]...[I<out_link_M>]
+
+I<filter_name> is the name of the filter class of which the
+described filter is an instance of, and has to be the name of one of
+the filter classes registered in the program.
+The name of the filter class is optionally followed by a string
+"=I<arguments>".
+
+I<arguments> is a string which contains the parameters used to
+initialize the filter instance, and are described in the filter
+descriptions below.
+
+The list of arguments can be quoted using the character "'" as initial
+and ending mark, and the character '\' for escaping the characters
+within the quoted text; otherwise the argument string is considered
+terminated when the next special character (belonging to the set
+"[]=;,") is encountered.
+
+The name and arguments of the filter are optionally preceded and
+followed by a list of link labels.
+A link label allows to name a link and associate it to a filter output
+or input pad. The preceding labels I<in_link_1>
+... I<in_link_N>, are associated to the filter input pads,
+the following labels I<out_link_1> ... I<out_link_M>, are
+associated to the output pads.
+
+When two link labels with the same name are found in the
+filtergraph, a link between the corresponding input and output pad is
+created.
+
+If an output pad is not labelled, it is linked by default to the first
+unlabelled input pad of the next filter in the filterchain.
+For example in the filterchain:
+	
+	nullsrc, split[L1], [L2]overlay, nullsink
+
+the split filter instance has two output pads, and the overlay filter
+instance two input pads. The first output pad of split is labelled
+"L1", the first input pad of overlay is labelled "L2", and the second
+output pad of split is linked to the second input pad of overlay,
+which are both unlabelled.
+
+In a complete filterchain all the unlabelled filter input and output
+pads must be connected. A filtergraph is considered valid if all the
+filter input and output pads of all the filterchains are connected.
+
+Follows a BNF description for the filtergraph syntax:
+	
+	<NAME>             ::= sequence of alphanumeric characters and '_'
+	<LINKLABEL>        ::= "[" <NAME> "]"
+	<LINKLABELS>       ::= <LINKLABEL> [<LINKLABELS>]
+	<FILTER_ARGUMENTS> ::= sequence of chars (eventually quoted)
+	<FILTER>           ::= [<LINKNAMES>] <NAME> ["=" <ARGUMENTS>] [<LINKNAMES>]
+	<FILTERCHAIN>      ::= <FILTER> [,<FILTERCHAIN>]
+	<FILTERGRAPH>      ::= <FILTERCHAIN> [;<FILTERGRAPH>]
+
+
+
+=head1 AUDIO FILTERS
+
+
+When you configure your FFmpeg build, you can disable any of the
+existing filters using --disable-filters.
+The configure output will show the audio filters included in your
+build.
+
+Below is a description of the currently available audio filters.
+
+
+=head2 anull
+
+
+Pass the audio source unchanged to the output.
+
+
+=head1 AUDIO SOURCES
+
+
+Below is a description of the currently available audio sources.
+
+
+=head2 anullsrc
+
+
+Null audio source, never return audio frames. It is mainly useful as a
+template and to be employed in analysis / debugging tools.
+
+It accepts as optional parameter a string of the form
+I<sample_rate>:I<channel_layout>.
+
+I<sample_rate> specify the sample rate, and defaults to 44100.
+
+I<channel_layout> specify the channel layout, and can be either an
+integer or a string representing a channel layout. The default value
+of I<channel_layout> is 3, which corresponds to CH_LAYOUT_STEREO.
+
+Check the channel_layout_map definition in
+F<libavcodec/audioconvert.c> for the mapping between strings and
+channel layout values.
+
+Follow some examples:
+	
+	#  set the sample rate to 48000 Hz and the channel layout to CH_LAYOUT_MONO.
+	anullsrc=48000:4
+	
+	# same as
+	anullsrc=48000:mono
+
+
+
+=head1 AUDIO SINKS
+
+
+Below is a description of the currently available audio sinks.
+
+
+=head2 anullsink
+
+
+Null audio sink, do absolutely nothing with the input audio. It is
+mainly useful as a template and to be employed in analysis / debugging
+tools.
+
+
+=head1 VIDEO FILTERS
+
+
+When you configure your FFmpeg build, you can disable any of the
+existing filters using --disable-filters.
+The configure output will show the video filters included in your
+build.
+
+Below is a description of the currently available video filters.
+
+
+=head2 blackframe
+
+
+Detect frames that are (almost) completely black. Can be useful to
+detect chapter transitions or commercials. Output lines consist of
+the frame number of the detected frame, the percentage of blackness,
+the position in the file if known or -1 and the timestamp in seconds.
+
+In order to display the output lines, you need to set the loglevel at
+least to the AV_LOG_INFO value.
+
+The filter accepts the syntax:
+	
+	blackframe[=<amount>:[<threshold>]]
+
+
+I<amount> is the percentage of the pixels that have to be below the
+threshold, and defaults to 98.
+
+I<threshold> is the threshold below which a pixel value is
+considered black, and defaults to 32.
+
+
+=head2 crop
+
+
+Crop the input video to I<out_w>:I<out_h>:I<x>:I<y>.
+
+The parameters are expressions containing the following constants:
+
+
+=over 4
+
+
+=item B<E, PI, PHI>
+
+the corresponding mathematical approximated values for e
+(euler number), pi (greek PI), PHI (golden ratio)
+
+
+=item B<x, y>
+
+the computed values for I<x> and I<y>. They are evaluated for
+each new frame.
+
+
+=item B<in_w, in_h>
+
+the input width and heigth
+
+
+=item B<iw, ih>
+
+same as I<in_w> and I<in_h>
+
+
+=item B<out_w, out_h>
+
+the output (cropped) width and heigth
+
+
+=item B<ow, oh>
+
+same as I<out_w> and I<out_h>
+
+
+=item B<n>
+
+the number of input frame, starting from 0
+
+
+=item B<pos>
+
+the position in the file of the input frame, NAN if unknown
+
+
+=item B<t>
+
+timestamp expressed in seconds, NAN if the input timestamp is unknown
+
+
+=back
+
+
+The I<out_w> and I<out_h> parameters specify the expressions for
+the width and height of the output (cropped) video. They are
+evaluated just at the configuration of the filter.
+
+The default value of I<out_w> is "in_w", and the default value of
+I<out_h> is "in_h".
+
+The expression for I<out_w> may depend on the value of I<out_h>,
+and the expression for I<out_h> may depend on I<out_w>, but they
+cannot depend on I<x> and I<y>, as I<x> and I<y> are
+evaluated after I<out_w> and I<out_h>.
+
+The I<x> and I<y> parameters specify the expressions for the
+position of the top-left corner of the output (non-cropped) area. They
+are evaluated for each frame. If the evaluated value is not valid, it
+is approximated to the nearest valid value.
+
+The default value of I<x> is "(in_w-out_w)/2", and the default
+value for I<y> is "(in_h-out_h)/2", which set the cropped area at
+the center of the input image.
+
+The expression for I<x> may depend on I<y>, and the expression
+for I<y> may depend on I<x>.
+
+Follow some examples:
+	
+	# crop the central input area with size 100x100
+	crop=100:100
+	
+	# crop the central input area with size 2/3 of the input video
+	"crop=2/3*in_w:2/3*in_h"
+	
+	# crop the input video central square
+	crop=in_h
+	
+	# delimit the rectangle with the top-left corner placed at position
+	# 100:100 and the right-bottom corner corresponding to the right-bottom
+	# corner of the input image.
+	crop=in_w-100:in_h-100:100:100
+	
+	# crop 10 pixels from the lefth and right borders, and 20 pixels from
+	# the top and bottom borders
+	"crop=in_w-2*10:in_h-2*20"
+	
+	# keep only the bottom right quarter of the input image
+	"crop=in_w/2:in_h/2:in_w/2:in_h/2"
+	
+	# crop height for getting Greek harmony
+	"crop=in_w:1/PHI*in_w"
+	
+	# trembling effect
+	"crop=in_w/2:in_h/2:(in_w-out_w)/2+((in_w-out_w)/2)*sin(n/10):(in_h-out_h)/2 +((in_h-out_h)/2)*sin(n/7)"
+	
+	# erratic camera effect depending on timestamp and position
+	"crop=in_w/2:in_h/2:(in_w-out_w)/2+((in_w-out_w)/2)*sin(t*10):(in_h-out_h)/2 +((in_h-out_h)/2)*sin(t*13)"
+	
+	# set x depending on the value of y
+	"crop=in_w/2:in_h/2:y:10+10*sin(n/10)"
+
+
+
+=head2 cropdetect
+
+
+Auto-detect crop size.
+
+Calculate necessary cropping parameters and prints the recommended
+parameters through the logging system. The detected dimensions
+correspond to the non-black area of the input video.
+
+It accepts the syntax:
+	
+	cropdetect[=<limit>[:<round>[:<reset>]]]
+
+
+
+=over 4
+
+
+
+=item B<limit>
+
+Threshold, which can be optionally specified from nothing (0) to
+everything (255), defaults to 24.
+
+
+=item B<round>
+
+Value which the width/height should be divisible by, defaults to
+16. The offset is automatically adjusted to center the video. Use 2 to
+get only even dimensions (needed for 4:2:2 video). 16 is best when
+encoding to most video codecs.
+
+
+=item B<reset>
+
+Counter that determines after how many frames cropdetect will reset
+the previously detected largest video area and start over to detect
+the current optimal crop area. Defaults to 0.
+
+This can be useful when channel logos distort the video area. 0
+indicates never reset and return the largest area encountered during
+playback.
+
+=back
+
+
+
+=head2 drawbox
+
+
+Draw a colored box on the input image.
+
+It accepts the syntax:
+	
+	drawbox=<x>:<y>:<width>:<height>:<color>
+
+
+
+=over 4
+
+
+
+=item B<x, y>
+
+Specify the top left corner coordinates of the box. Default to 0.
+
+
+=item B<width, height>
+
+Specify the width and height of the box, if 0 they are interpreted as
+the input width and height. Default to 0.
+
+
+=item B<color>
+
+Specify the color of the box to write, it can be the name of a color
+(case insensitive match) or a 0xRRGGBB[AA] sequence.
+
+=back
+
+
+Follow some examples:
+	
+	# draw a black box around the edge of the input image
+	drawbox
+	
+	# draw a box with color red and an opacity of 50%
+	drawbox=10:20:200:60:red@0.5"
+
+
+
+=head2 fifo
+
+
+Buffer input images and send them when they are requested.
+
+This filter is mainly useful when auto-inserted by the libavfilter
+framework.
+
+The filter does not take parameters.
+
+
+=head2 format
+
+
+Convert the input video to one of the specified pixel formats.
+Libavfilter will try to pick one that is supported for the input to
+the next filter.
+
+The filter accepts a list of pixel format names, separated by ":",
+for example "yuv420p:monow:rgb24".
+
+The following command:
+
+	
+	./ffmpeg -i in.avi -vf "format=yuv420p" out.avi
+
+
+will convert the input video to the format "yuv420p".
+
+
+
+=head2 frei0r
+
+
+Apply a frei0r effect to the input video.
+
+To enable compilation of this filter you need to install the frei0r
+header and configure FFmpeg with --enable-frei0r.
+
+The filter supports the syntax:
+	
+	<filter_name>[{:|=}<param1>:<param2>:...:<paramN>]
+
+
+I<filter_name> is the name to the frei0r effect to load. If the
+environment variable B<FREI0R_PATH> is defined, the frei0r effect
+is searched in each one of the directories specified by the colon
+separated list in B<FREIOR_PATH>, otherwise in the standard frei0r
+paths, which are in this order: F<HOME/.frei0r-1/lib/>,
+F</usr/local/lib/frei0r-1/>, F</usr/lib/frei0r-1/>.
+
+I<param1>, I<param2>, ... , I<paramN> specify the parameters
+for the frei0r effect.
+
+A frei0r effect parameter can be a boolean (whose values are specified
+with "y" and "n"), a double, a color (specified by the syntax
+I<R>/I<G>/I<B>, I<R>, I<G>, and I<B> being float
+numbers from 0.0 to 1.0) or by an C<av_parse_color()> color
+description), a position (specified by the syntax I<X>/I<Y>,
+I<X> and I<Y> being float numbers) and a string.
+
+The number and kind of parameters depend on the loaded effect. If an
+effect parameter is not specified the default value is set.
+
+Some examples follow:
+	
+	# apply the distort0r effect, set the first two double parameters
+	frei0r=distort0r:0.5:0.01
+	
+	# apply the colordistance effect, takes a color as first parameter
+	frei0r=colordistance:0.2/0.3/0.4
+	frei0r=colordistance:violet
+	frei0r=colordistance:0x112233
+	
+	# apply the perspective effect, specify the top left and top right
+	# image positions
+	frei0r=perspective:0.2/0.2:0.8/0.2
+
+
+For more information see:
+E<lt>B<http://piksel.org/frei0r>E<gt>
+
+
+=head2 gradfun
+
+
+Fix the banding artifacts that are sometimes introduced into nearly flat
+regions by truncation to 8bit colordepth.
+Interpolate the gradients that should go where the bands are, and
+dither them.
+
+The filter takes two optional parameters, separated by ':':
+I<strength>:I<radius>
+
+I<strength> is the maximum amount by which the filter will change
+any one pixel. Also the threshold for detecting nearly flat
+regions. Acceptable values range from .51 to 255, default value is
+1.2, out-of-range values will be clipped to the valid range.
+
+I<radius> is the neighborhood to fit the gradient to. A larger
+radius makes for smoother gradients, but also prevents the filter from
+modifying the pixels near detailed regions. Acceptable values are
+8-32, default value is 16, out-of-range values will be clipped to the
+valid range.
+
+	
+	# default parameters
+	gradfun=1.2:16
+	
+	# omitting radius
+	gradfun=1.2
+
+
+
+=head2 hflip
+
+
+Flip the input video horizontally.
+
+For example to horizontally flip the video in input with
+F<ffmpeg>:
+	
+	ffmpeg -i in.avi -vf "hflip" out.avi
+
+
+
+=head2 hqdn3d
+
+
+High precision/quality 3d denoise filter. This filter aims to reduce
+image noise producing smooth images and making still images really
+still. It should enhance compressibility.
+
+It accepts the following optional parameters:
+I<luma_spatial>:I<chroma_spatial>:I<luma_tmp>:I<chroma_tmp>
+
+
+=over 4
+
+
+=item B<luma_spatial>
+
+a non-negative float number which specifies spatial luma strength,
+defaults to 4.0
+
+
+=item B<chroma_spatial>
+
+a non-negative float number which specifies spatial chroma strength,
+defaults to 3.0*I<luma_spatial>/4.0
+
+
+=item B<luma_tmp>
+
+a float number which specifies luma temporal strength, defaults to
+6.0*I<luma_spatial>/4.0
+
+
+=item B<chroma_tmp>
+
+a float number which specifies chroma temporal strength, defaults to
+I<luma_tmp>*I<chroma_spatial>/I<luma_spatial>
+
+=back
+
+
+
+=head2 noformat
+
+
+Force libavfilter not to use any of the specified pixel formats for the
+input to the next filter.
+
+The filter accepts a list of pixel format names, separated by ":",
+for example "yuv420p:monow:rgb24".
+
+The following command:
+
+	
+	./ffmpeg -i in.avi -vf "noformat=yuv420p, vflip" out.avi
+
+
+will make libavfilter use a format different from "yuv420p" for the
+input to the vflip filter.
+
+
+=head2 null
+
+
+Pass the video source unchanged to the output.
+
+
+=head2 ocv_smooth
+
+
+Apply smooth transform using libopencv.
+
+To enable this filter install libopencv library and headers and
+configure FFmpeg with --enable-libopencv.
+
+The filter accepts the following parameters:
+I<type>:I<param1>:I<param2>:I<param3>:I<param4>.
+
+I<type> is the type of smooth filter to apply, and can be one of
+the following values: "blur", "blur_no_scale", "median", "gaussian",
+"bilateral". The default value is "gaussian".
+
+I<param1>, I<param2>, I<param3>, and I<param4> are
+parameters whose meanings depend on smooth type. I<param1> and
+I<param2> accept integer positive values or 0, I<param3> and
+I<param4> accept float values.
+
+The default value for I<param1> is 3, the default value for the
+other parameters is 0.
+
+These parameters correspond to the parameters assigned to the
+libopencv function C<cvSmooth>. Refer to the official libopencv
+documentation for the exact meaning of the parameters:
+E<lt>B<http://opencv.willowgarage.com/documentation/c/image_filtering.html>E<gt>
+
+
+=head2 overlay
+
+
+Overlay one video on top of another.
+
+It takes two inputs and one output, the first input is the "main"
+video on which the second input is overlayed.
+
+It accepts the parameters: I<x>:I<y>.
+
+I<x> is the x coordinate of the overlayed video on the main video,
+I<y> is the y coordinate. The parameters are expressions containing
+the following parameters:
+
+
+=over 4
+
+
+=item B<main_w, main_h>
+
+main input width and height
+
+
+=item B<W, H>
+
+same as I<main_w> and I<main_h>
+
+
+=item B<overlay_w, overlay_h>
+
+overlay input width and height
+
+
+=item B<w, h>
+
+same as I<overlay_w> and I<overlay_h>
+
+=back
+
+
+Be aware that frames are taken from each input video in timestamp
+order, hence, if their initial timestamps differ, it is a a good idea
+to pass the two inputs through a I<setpts=PTS-STARTPTS> filter to
+have them begin in the same zero timestamp, as it does the example for
+the I<movie> filter.
+
+Follow some examples:
+	
+	# draw the overlay at 10 pixels from the bottom right
+	# corner of the main video.
+	overlay=main_w-overlay_w-10:main_h-overlay_h-10
+	
+	# insert a transparent PNG logo in the bottom left corner of the input
+	movie=0:png:logo.png [logo];
+	[in][logo] overlay=10:main_h-overlay_h-10 [out]
+	
+	# insert 2 different transparent PNG logos (second logo on bottom
+	# right corner):
+	movie=0:png:logo1.png [logo1];
+	movie=0:png:logo2.png [logo2];
+	[in][logo1]       overlay=10:H-h-10 [in+logo1];
+	[in+logo1][logo2] overlay=W-w-10:H-h-10 [out]
+	
+	# add a transparent color layer on top of the main video,
+	# WxH specifies the size of the main input to the overlay filter
+	color=red.3:WxH [over]; [in][over] overlay [out]
+
+
+You can chain togheter more overlays but the efficiency of such
+approach is yet to be tested.
+
+
+=head2 pad
+
+
+Add paddings to the input image, and places the original input at the
+given coordinates I<x>, I<y>.
+
+It accepts the following parameters:
+I<width>:I<height>:I<x>:I<y>:I<color>.
+
+Follows the description of the accepted parameters.
+
+
+=over 4
+
+
+=item B<width, height>
+
+
+Specify the size of the output image with the paddings added. If the
+value for I<width> or I<height> is 0, the corresponding input size
+is used for the output.
+
+The default value of I<width> and I<height> is 0.
+
+
+=item B<x, y>
+
+
+Specify the offsets where to place the input image in the padded area
+with respect to the top/left border of the output image.
+
+The default value of I<x> and I<y> is 0.
+
+
+=item B<color>
+
+
+Specify the color of the padded area, it can be the name of a color
+(case insensitive match) or a 0xRRGGBB[AA] sequence.
+
+The default value of I<color> is "black".
+
+
+=back
+
+
+For example:
+
+	
+	# Add paddings with color "violet" to the input video. Output video
+	# size is 640x480, the top-left corner of the input video is placed at
+	# row 0, column 40.
+	pad=640:480:0:40:violet
+
+
+
+=head2 pixdesctest
+
+
+Pixel format descriptor test filter, mainly useful for internal
+testing. The output video should be equal to the input video.
+
+For example:
+	
+	format=monow, pixdesctest
+
+
+can be used to test the monowhite pixel format descriptor definition.
+
+
+=head2 scale
+
+
+Scale the input video to I<width>:I<height> and/or convert the image format.
+
+For example the command:
+
+	
+	./ffmpeg -i in.avi -vf "scale=200:100" out.avi
+
+
+will scale the input video to a size of 200x100.
+
+If the input image format is different from the format requested by
+the next filter, the scale filter will convert the input to the
+requested format.
+
+If the value for I<width> or I<height> is 0, the respective input
+size is used for the output.
+
+If the value for I<width> or I<height> is -1, the scale filter will
+use, for the respective output size, a value that maintains the aspect
+ratio of the input image.
+
+The default value of I<width> and I<height> is 0.
+
+
+=head2 setpts
+
+
+Change the PTS (presentation timestamp) of the input video frames.
+
+Accept in input an expression evaluated through the eval API, which
+can contain the following constants:
+
+
+=over 4
+
+
+=item B<PTS>
+
+the presentation timestamp in input
+
+
+=item B<PI>
+
+Greek PI
+
+
+=item B<PHI>
+
+golden ratio
+
+
+=item B<E>
+
+Euler number
+
+
+=item B<N>
+
+the count of the input frame, starting from 0.
+
+
+=item B<STARTPTS>
+
+the PTS of the first video frame
+
+
+=item B<INTERLACED>
+
+tell if the current frame is interlaced
+
+
+=item B<POS>
+
+original position in the file of the frame, or undefined if undefined
+for the current frame
+
+
+=item B<PREV_INPTS>
+
+previous input PTS
+
+
+=item B<PREV_OUTPTS>
+
+previous output PTS
+
+
+=back
+
+
+Some examples follow:
+
+	
+	# start counting PTS from zero
+	setpts=PTS-STARTPTS
+	
+	# fast motion
+	setpts=0.5*PTS
+	
+	# slow motion
+	setpts=2.0*PTS
+	
+	# fixed rate 25 fps
+	setpts=N/(25*TB)
+	
+	# fixed rate 25 fps with some jitter
+	setpts='1/(25*TB) * (N + 0.05 * sin(N*2*PI/25))'
+
+
+
+=head2 settb
+
+
+Set the timebase to use for the output frames timestamps.
+It is mainly useful for testing timebase configuration.
+
+It accepts in input an arithmetic expression representing a rational.
+The expression can contain the constants "PI", "E", "PHI", "AVTB" (the
+default timebase), and "intb" (the input timebase).
+
+The default value for the input is "intb".
+
+Follow some examples.
+
+	
+	# set the timebase to 1/25
+	settb=1/25
+	
+	# set the timebase to 1/10
+	settb=0.1
+	
+	#set the timebase to 1001/1000
+	settb=1+0.001
+	
+	#set the timebase to 2*intb
+	settb=2*intb
+	
+	#set the default timebase value
+	settb=AVTB
+
+
+
+=head2 slicify
+
+
+Pass the images of input video on to next video filter as multiple
+slices.
+
+	
+	./ffmpeg -i in.avi -vf "slicify=32" out.avi
+
+
+The filter accepts the slice height as parameter. If the parameter is
+not specified it will use the default value of 16.
+
+Adding this in the beginning of filter chains should make filtering
+faster due to better use of the memory cache.
+
+
+=head2 transpose
+
+
+Transpose rows with columns in the input video and optionally flip it.
+
+It accepts a parameter representing an integer, which can assume the
+values:
+
+
+=over 4
+
+
+=item B<0>
+
+Rotate by 90 degrees counterclockwise and vertically flip (default), that is:
+	
+	L.R     L.l
+	. . ->  . .
+	l.r     R.r
+
+
+
+=item B<1>
+
+Rotate by 90 degrees clockwise, that is:
+	
+	L.R     l.L
+	. . ->  . .
+	l.r     r.R
+
+
+
+=item B<2>
+
+Rotate by 90 degrees counterclockwise, that is:
+	
+	L.R     R.r
+	. . ->  . .
+	l.r     L.l
+
+
+
+=item B<3>
+
+Rotate by 90 degrees clockwise and vertically flip, that is:
+	
+	L.R     r.R
+	. . ->  . .
+	l.r     l.L
+
+
+=back
+
+
+
+=head2 unsharp
+
+
+Sharpen or blur the input video.
+
+It accepts the following parameters:
+I<luma_msize_x>:I<luma_msize_y>:I<luma_amount>:I<chroma_msize_x>:I<chroma_msize_y>:I<chroma_amount>
+
+Negative values for the amount will blur the input video, while positive
+values will sharpen. All parameters are optional and default to the
+equivalent of the string '5:5:1.0:0:0:0.0'.
+
+
+=over 4
+
+
+
+=item B<luma_msize_x>
+
+Set the luma matrix horizontal size. It can be an integer between 3
+and 13, default value is 5.
+
+
+=item B<luma_msize_y>
+
+Set the luma matrix vertical size. It can be an integer between 3
+and 13, default value is 5.
+
+
+=item B<luma_amount>
+
+Set the luma effect strength. It can be a float number between -2.0
+and 5.0, default value is 1.0.
+
+
+=item B<chroma_msize_x>
+
+Set the chroma matrix horizontal size. It can be an integer between 3
+and 13, default value is 0.
+
+
+=item B<chroma_msize_y>
+
+Set the chroma matrix vertical size. It can be an integer between 3
+and 13, default value is 0.
+
+
+=item B<luma_amount>
+
+Set the chroma effect strength. It can be a float number between -2.0
+and 5.0, default value is 0.0.
+
+
+=back
+
+
+	
+	# Strong luma sharpen effect parameters
+	unsharp=7:7:2.5
+	
+	# Strong blur of both luma and chroma parameters
+	unsharp=7:7:-2:7:7:-2
+	
+	# Use the default values with B<ffmpeg>
+	./ffmpeg -i in.avi -vf "unsharp" out.mp4
+
+
+
+=head2 vflip
+
+
+Flip the input video vertically.
+
+	
+	./ffmpeg -i in.avi -vf "vflip" out.avi
+
+
+
+=head2 yadif
+
+
+yadif is "yet another deinterlacing filter".
+
+It accepts the syntax:
+	
+	yadif=[<mode>[:<parity>]]
+
+
+
+=over 4
+
+
+
+=item B<mode>
+
+Specify the interlacing mode to adopt, accepts one of the following values.
+
+0: Output 1 frame for each frame.
+
+1: Output 1 frame for each field.
+
+2: Like 0 but skips spatial interlacing check.
+
+3: Like 1 but skips spatial interlacing check.
+
+Default value is 0.
+
+
+=item B<parity>
+
+0 if is bottom field first, 1 if the interlaced video is top field
+first, -1 to enable automatic detection.
+
+
+=back
+
+
+
+=head1 VIDEO SOURCES
+
+
+Below is a description of the currently available video sources.
+
+
+=head2 buffer
+
+
+Buffer video frames, and make them available to the filter chain.
+
+This source is mainly intended for a programmatic use, in particular
+through the interface defined in F<libavfilter/vsrc_buffer.h>.
+
+It accepts the following parameters:
+I<width>:I<height>:I<pix_fmt_string>:I<timebase_num>:I<timebase_den>
+
+All the parameters need to be explicitely defined.
+
+Follows the list of the accepted parameters.
+
+
+=over 4
+
+
+
+=item B<width, height>
+
+Specify the width and height of the buffered video frames.
+
+
+=item B<pix_fmt_string>
+
+A string representing the pixel format of the buffered video frames.
+It may be a number corresponding to a pixel format, or a pixel format
+name.
+
+
+=item B<timebase_num, timebase_den>
+
+Specify numerator and denomitor of the timebase assumed by the
+timestamps of the buffered frames.
+
+=back
+
+
+For example:
+	
+	buffer=320:240:yuv410p:1:24
+
+
+will instruct the source to accept video frames with size 320x240 and
+with format "yuv410p" and assuming 1/24 as the timestamps timebase.
+Since the pixel format with name "yuv410p" corresponds to the number 6
+(check the enum PixelFormat definition in F<libavutil/pixfmt.h>),
+this example corresponds to:
+	
+	buffer=320:240:6:1:24
+
+
+
+=head2 color
+
+
+Provide an uniformly colored input.
+
+It accepts the following parameters:
+I<color>:I<frame_size>:I<frame_rate>
+
+Follows the description of the accepted parameters.
+
+
+=over 4
+
+
+
+=item B<color>
+
+Specify the color of the source. It can be the name of a color (case
+insensitive match) or a 0xRRGGBB[AA] sequence, possibly followed by an
+alpha specifier. The default value is "black".
+
+
+=item B<frame_size>
+
+Specify the size of the sourced video, it may be a string of the form
+I<width>xI<heigth>, or the name of a size abbreviation. The
+default value is "320x240".
+
+
+=item B<frame_rate>
+
+Specify the frame rate of the sourced video, as the number of frames
+generated per second. It has to be a string in the format
+I<frame_rate_num>/I<frame_rate_den>, an integer number, a float
+number or a valid video frame rate abbreviation. The default value is
+"25".
+
+
+=back
+
+
+For example the following graph description will generate a red source
+with an opacity of 0.2, with size "qcif" and a frame rate of 10
+frames per second, which will be overlayed over the source connected
+to the pad with identifier "in".
+
+	
+	"color=red@0.2:qcif:10 [color]; [in][color] overlay [out]"
+
+
+
+=head2 nullsrc
+
+
+Null video source, never return images. It is mainly useful as a
+template and to be employed in analysis / debugging tools.
+
+It accepts as optional parameter a string of the form
+I<width>:I<height>:I<timebase>.
+
+I<width> and I<height> specify the size of the configured
+source. The default values of I<width> and I<height> are
+respectively 352 and 288 (corresponding to the CIF size format).
+
+I<timebase> specifies an arithmetic expression representing a
+timebase. The expression can contain the constants "PI", "E", "PHI",
+"AVTB" (the default timebase), and defaults to the value "AVTB".
+
+
+=head2 frei0r_src
+
+
+Provide a frei0r source.
+
+To enable compilation of this filter you need to install the frei0r
+header and configure FFmpeg with --enable-frei0r.
+
+The source supports the syntax:
+	
+	<size>:<rate>:<src_name>[{=|:}<param1>:<param2>:...:<paramN>]
+
+
+I<size> is the size of the video to generate, may be a string of the
+form I<width>xI<height> or a frame size abbreviation.
+I<rate> is the rate of the video to generate, may be a string of
+the form I<num>/I<den> or a frame rate abbreviation.
+I<src_name> is the name to the frei0r source to load. For more
+information regarding frei0r and how to set the parameters read the
+section "frei0r" in the description of the video
+filters.
+
+Some examples follow:
+	
+	# generate a frei0r partik0l source with size 200x200 and framerate 10
+	# which is overlayed on the overlay filter main input
+	frei0r_src=200x200:10:partik0l=1234 [overlay]; [in][overlay] overlay
+
+
+
+=head1 VIDEO SINKS
+
+
+Below is a description of the currently available video sinks.
+
+
+=head2 nullsink
+
+
+Null video sink, do absolutely nothing with the input video. It is
+mainly useful as a template and to be employed in analysis / debugging
+tools.
+
+
+=head1 SEE ALSO
+
+ffmpeg(1), ffprobe(1), ffserver(1) and the FFmpeg HTML documentation
+
+=head1 AUTHORS
+
+The FFmpeg developers
+
