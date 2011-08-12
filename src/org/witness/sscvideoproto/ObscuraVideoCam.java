@@ -47,6 +47,9 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	Camera.Parameters p;
 		
 	ProcessVideo processVideo;
+	
+	File recordingFile;
+	File savePath;
 		
 	String[] libraryAssets = {"ffmpeg",
 			"libavcodec.so", "libavcodec.so.52", "libavcodec.so.52.99.1",
@@ -62,7 +65,7 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
         for (int i = 0; i < libraryAssets.length; i++) {
 			try {
 				InputStream ffmpegInputStream = this.getAssets().open(libraryAssets[i]);
-		        FileMover fm = new FileMover(ffmpegInputStream,"/"+PACKAGENAME+"/" + libraryAssets[i]);
+		        FileMover fm = new FileMover(ffmpegInputStream,"/data/data/"+PACKAGENAME+"/" + libraryAssets[i]);
 		        fm.moveIt();
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -72,7 +75,7 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
         Process process = null;
         
         try {
-        	String[] args = {"/system/bin/chmod", "755", "/"+PACKAGENAME+"/ffmpeg"};
+        	String[] args = {"/system/bin/chmod", "755", "/data/data/"+PACKAGENAME+"/ffmpeg"};
         	process = new ProcessBuilder(args).start();        	
         	try {
 				process.waitFor();
@@ -84,14 +87,25 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		File savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
+	}
+	
+	private void createCleanSavePath() {
+		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
 		
+		Log.v(LOGTAG,"savePath:" + savePath.getPath());
+		if (savePath.exists()) {
+			Log.v(LOGTAG,"savePath exists!");
+		} else {
+			Log.v(LOGTAG,"savePath DOES NOT exist!");
+		}
+		
 		File[] existingFiles = savePath.listFiles();
-		for (int i = 0; i < existingFiles.length; i++) {
-			existingFiles[i].delete();
-		}		
+		if (existingFiles != null) {
+			for (int i = 0; i < existingFiles.length; i++) {
+				existingFiles[i].delete();
+			}
+		}
 	}
 	
 	@Override
@@ -135,11 +149,14 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	
 		recorder.setProfile(camcorderProfile);
 	
+		createCleanSavePath();
+		
 		// This is all very sloppy
 		if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.THREE_GPP) {
 	    	try {
-				File newFile = File.createTempFile("videocapture", ".3gp", Environment.getExternalStorageDirectory());
-				recorder.setOutputFile(newFile.getAbsolutePath());
+				recordingFile = File.createTempFile("videocapture", ".3gp", savePath);
+				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
+				recorder.setOutputFile(recordingFile.getAbsolutePath());
 			} catch (IOException e) {
 				Log.v(LOGTAG,"Couldn't create file");
 				e.printStackTrace();
@@ -147,8 +164,9 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			}
 		} else if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.MPEG_4) {
 	    	try {
-				File newFile = File.createTempFile("videocapture", ".mp4", Environment.getExternalStorageDirectory());
-				recorder.setOutputFile(newFile.getAbsolutePath());
+	    		recordingFile = File.createTempFile("videocapture", ".mp4", savePath);
+				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
+				recorder.setOutputFile(recordingFile.getAbsolutePath());
 			} catch (IOException e) {
 				Log.v(LOGTAG,"Couldn't create file");
 				e.printStackTrace();
@@ -156,8 +174,9 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			}
 		} else {
 	    	try {
-				File newFile = File.createTempFile("videocapture", ".mp4", Environment.getExternalStorageDirectory());
-				recorder.setOutputFile(newFile.getAbsolutePath());
+	    		recordingFile = File.createTempFile("videocapture", ".mp4", savePath);
+				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
+				recorder.setOutputFile(recordingFile.getAbsolutePath());
 			} catch (IOException e) {
 				Log.v(LOGTAG,"Couldn't create file");
 				e.printStackTrace();
@@ -291,8 +310,17 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	        		        	
 	        	// ffmpeg -i VID_20110811_122115.3gp -f mov -vcodec mpeg1video -b 800k -s 640x480 -ab 64k -acodec aac -strict experimental -vf "color=red:320x240 [over]; [in][over] overlay [out]" output.mov
 				//String[] args2 = {"/data/data/com.mobvcasting.ffmpegcommandlinetest/ffmpeg", "-y", "-i", "/data/data/com.mobvcasting.ffmpegcommandlinetest/", "-vcodec", "copy", "-acodec", "copy", "-f", "flv", "rtmp://192.168.43.176/live/thestream"};
-				String[] ffmpegCommand = {"/"+PACKAGENAME+"/ffmpeg", "-r", ""+p.getPreviewFrameRate(), "-b", "1000000", "-qscale", "1", "-vcodec", "mjpeg", "-i", Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/frame_%05d.jpg", Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/video.avi"};
 				
+	        	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
+	        	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
+	        	
+	        	// Trying with a simple vflip filter, no overlaying yet
+	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-f", "mov", "-vcodec", "mpeg1video", "-b", "800k", "-s", "640x480", "-acodec", "aac", "-strict", "experimental", "-vf", "\"vflip\"", "-i", recordingFile.getPath(), savePath.getPath()+"/output.mov"};
+	        	StringBuilder ffmpegCmmandSb = new StringBuilder();
+	        	for (int i = 0; i < ffmpegCommand.length; i++) {
+	        		ffmpegCmmandSb.append(ffmpegCommand[i]);
+	        	}
+	        	Log.v(LOGTAG, ffmpegCmmandSb.toString());
 				ffmpegProcess = new ProcessBuilder(ffmpegCommand).redirectErrorStream(true).start();         	
 				
 				OutputStream ffmpegOutStream = ffmpegProcess.getOutputStream();
