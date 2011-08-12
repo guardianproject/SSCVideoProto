@@ -2,31 +2,18 @@ package org.witness.sscvideoproto;
 
 import android.app.Activity;
 import android.os.Bundle;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.ImageFormat;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
-import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
@@ -39,38 +26,27 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class ObscuraVideoCam extends Activity implements OnClickListener, 
-									SurfaceHolder.Callback, Camera.PreviewCallback { 
-	
+public class ObscuraVideoCam extends Activity implements OnClickListener, MediaRecorder.OnInfoListener, 
+MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
+{ 
+
 	public static final String LOGTAG = "OBSCURAVIDEOCAM";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
 	
+	private MediaRecorder recorder;
 	private SurfaceHolder holder;
 	private CamcorderProfile camcorderProfile;
 	private Camera camera;	
 	
-	byte[] previewCallbackBuffer;
-
 	boolean recording = false;
-	boolean previewRunning = false;	
-	
-	File jpegFile;			
-	int fileCount = 0;
-	
-	FileOutputStream fos;
-	BufferedOutputStream bos;
+	boolean usecamera = true;
+	boolean previewRunning = false;
+
 	Button recordButton;
 	
 	Camera.Parameters p;
-	
-	NumberFormat fileCountFormatter = new DecimalFormat("00000");
-	String formattedFileCount;
-	
+		
 	ProcessVideo processVideo;
-	
-	Bitmap outputBitmap;
-	Canvas outputCanvas;
-	Paint paint;
 		
 	String[] libraryAssets = {"ffmpeg",
 			"libavcodec.so", "libavcodec.so.52", "libavcodec.so.52.99.1",
@@ -81,11 +57,8 @@ public class ObscuraVideoCam extends Activity implements OnClickListener,
 			"libavutil.so", "libavutil.so.50", "libavutil.so.50.34.0",
 			"libswscale.so", "libswscale.so.0", "libswscale.so.0.12.0"
 	};
-	
-	@Override
-    public void onCreate(Bundle savedInstanceState) {
-super.onCreate(savedInstanceState);
-        
+
+	private void moveLibraryAssets() {
         for (int i = 0; i < libraryAssets.length; i++) {
 			try {
 				InputStream ffmpegInputStream = this.getAssets().open(libraryAssets[i]);
@@ -118,93 +91,129 @@ super.onCreate(savedInstanceState);
 		File[] existingFiles = savePath.listFiles();
 		for (int i = 0; i < existingFiles.length; i++) {
 			existingFiles[i].delete();
-		}
+		}		
+	}
+	
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+
+		moveLibraryAssets();
 		
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-
+	
+		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
+	
 		setContentView(R.layout.main);
 		
 		recordButton = (Button) this.findViewById(R.id.RecordButton);
-		recordButton.setOnClickListener(this);
+		recordButton.setOnClickListener(this);		
 		
-		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
-
 		SurfaceView cameraView = (SurfaceView) findViewById(R.id.CameraView);
 		holder = cameraView.getHolder();
 		holder.addCallback(this);
 		holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-
+	
 		cameraView.setClickable(true);
 		cameraView.setOnClickListener(this);
 	}
+	
+	private void prepareRecorder() {
+	    recorder = new MediaRecorder();
+		recorder.setPreviewDisplay(holder.getSurface());
+		
+		if (usecamera) {
+			camera.unlock();
+			recorder.setCamera(camera);
+		}
+		
+		recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+		recorder.setVideoSource(MediaRecorder.VideoSource.DEFAULT);
+	
+		recorder.setProfile(camcorderProfile);
+	
+		// This is all very sloppy
+		if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.THREE_GPP) {
+	    	try {
+				File newFile = File.createTempFile("videocapture", ".3gp", Environment.getExternalStorageDirectory());
+				recorder.setOutputFile(newFile.getAbsolutePath());
+			} catch (IOException e) {
+				Log.v(LOGTAG,"Couldn't create file");
+				e.printStackTrace();
+				finish();
+			}
+		} else if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.MPEG_4) {
+	    	try {
+				File newFile = File.createTempFile("videocapture", ".mp4", Environment.getExternalStorageDirectory());
+				recorder.setOutputFile(newFile.getAbsolutePath());
+			} catch (IOException e) {
+				Log.v(LOGTAG,"Couldn't create file");
+				e.printStackTrace();
+				finish();
+			}
+		} else {
+	    	try {
+				File newFile = File.createTempFile("videocapture", ".mp4", Environment.getExternalStorageDirectory());
+				recorder.setOutputFile(newFile.getAbsolutePath());
+			} catch (IOException e) {
+				Log.v(LOGTAG,"Couldn't create file");
+				e.printStackTrace();
+				finish();
+			}
+	
+		}
+		//recorder.setMaxDuration(50000); // 50 seconds
+		//recorder.setMaxFileSize(5000000); // Approximately 5 megabytes
+		
+		try {
+			recorder.prepare();
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
+			finish();
+		} catch (IOException e) {
+			e.printStackTrace();
+			finish();
+		}
+	}
 
 	public void onClick(View v) {
-		if (recording) 
-		{
-			recording = false;			
+		if (recording) {
+			recorder.stop();
+			if (usecamera) {
+				try {
+					camera.reconnect();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}			
+			// recorder.release();
+			recording = false;
 			Log.v(LOGTAG, "Recording Stopped");
-			
+
 			// Convert to video
 			processVideo = new ProcessVideo();
 			processVideo.execute();
-		} 
-		else 
-		{
+			
+			// Let's prepareRecorder so we can record again
+			//prepareRecorder();
+		} else {
 			recording = true;
+			recorder.start();
 			Log.v(LOGTAG, "Recording Started");
 		}
 	}
-
+	
 	public void surfaceCreated(SurfaceHolder holder) {
 		Log.v(LOGTAG, "surfaceCreated");
 		
-		camera = Camera.open();
-		
-		/*
-		try {
-			camera.setPreviewDisplay(holder);
-			camera.startPreview();
-			previewRunning = true;
-		}
-		catch (IOException e) {
-			Log.e(LOGTAG,e.getMessage());
-			e.printStackTrace();
-		}	
-		*/
-	}
-
-	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-		Log.v(LOGTAG, "surfaceChanged");
-
-		if (!recording) {
-			if (previewRunning){
-				camera.stopPreview();
-			}
-
+		if (usecamera) {
+			camera = Camera.open();
+			
 			try {
-				p = camera.getParameters();
-
-				p.setPreviewSize(camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight);
-			    p.setPreviewFrameRate(camcorderProfile.videoFrameRate);
-				camera.setParameters(p);
-				
 				camera.setPreviewDisplay(holder);
-				
-				/*
-				Log.v(LOGTAG,"Setting up preview callback buffer");
-				previewCallbackBuffer = new byte[(camcorderProfile.videoFrameWidth * camcorderProfile.videoFrameHeight * 
-													ImageFormat.getBitsPerPixel(p.getPreviewFormat()) / 8)];
-				Log.v(LOGTAG,"setPreviewCallbackWithBuffer");
-				camera.addCallbackBuffer(previewCallbackBuffer);				
-				camera.setPreviewCallbackWithBuffer(this);
-				*/
-				
-				camera.setPreviewCallback(this);
-				
-				Log.v(LOGTAG,"startPreview");
 				camera.startPreview();
 				previewRunning = true;
 			}
@@ -212,92 +221,58 @@ super.onCreate(savedInstanceState);
 				Log.e(LOGTAG,e.getMessage());
 				e.printStackTrace();
 			}	
+		}		
+		
+	}
+	
+	
+	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		Log.v(LOGTAG, "surfaceChanged");
+	
+		if (!recording && usecamera) {
+			if (previewRunning){
+				camera.stopPreview();
+			}
+	
+			try {
+				Camera.Parameters p = camera.getParameters();
+	
+				 p.setPreviewSize(camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight);
+			     p.setPreviewFrameRate(camcorderProfile.videoFrameRate);
+				
+				camera.setParameters(p);
+				
+				camera.setPreviewDisplay(holder);
+				camera.startPreview();
+				previewRunning = true;
+			}
+			catch (IOException e) {
+				Log.e(LOGTAG,e.getMessage());
+				e.printStackTrace();
+			}	
+			
+			prepareRecorder();	
 		}
 	}
-
+	
+	
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		Log.v(LOGTAG, "surfaceDestroyed");
 		if (recording) {
+			recorder.stop();
 			recording = false;
-
-			try {
-				bos.flush();
-				bos.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
 		}
-
-		previewRunning = false;
-		camera.release();
+		recorder.release();
+		if (usecamera) {
+			previewRunning = false;
+			camera.lock();
+			camera.release();
+		}
 		finish();
 	}
 
 	public void onPreviewFrame(byte[] b, Camera c) {
-		/*
-		//Log.v(LOGTAG,"onPreviewFrame");
-		if (recording) {
-
-			// Assuming ImageFormat.NV21
-			if (p.getPreviewFormat() == ImageFormat.NV21) {
-				Log.v(LOGTAG,"Started Writing Frame");
-				
-				try {
-					
-					// encode bytes into a jpeg byte array
-					ByteArrayOutputStream jpegByteArrayOutputStream = new ByteArrayOutputStream();
-					YuvImage im = new YuvImage(b, ImageFormat.NV21, p.getPreviewSize().width, p.getPreviewSize().height, null);
-					Rect r = new Rect(0,0,p.getPreviewSize().width,p.getPreviewSize().height);
-					im.compressToJpeg(r, 10, jpegByteArrayOutputStream); // Hope 10 is lossless							
-					
-					// Load the byte array into a bitmap (decode)
-					BitmapFactory.Options bitmapFactoryOptions = new BitmapFactory.Options();
-					bitmapFactoryOptions.inPreferredConfig = Bitmap.Config.RGB_565;
-					Bitmap newBitmap = BitmapFactory.decodeByteArray(jpegByteArrayOutputStream.toByteArray(), 0, jpegByteArrayOutputStream.size(), bitmapFactoryOptions);
-					
-					// The rect to obscure
-					Rect rect = new Rect(100,100,150,150);
-					
-					// If we don't already have paint
-					if (paint == null) {	
-						paint = new Paint();
-				        paint.setColor(Color.BLACK);
-					}
-
-					// If we don't already have a bitmap
-					if (outputBitmap == null) {
-						outputBitmap = Bitmap.createBitmap(newBitmap.getWidth(), newBitmap.getHeight(), Bitmap.Config.RGB_565);
-					}
-					
-					// If we don't already have a canvas
-					if (outputCanvas == null) {
-						outputCanvas = new Canvas(outputBitmap);
-					}
-					
-					// Draw the new bitmap on the canvas
-					outputCanvas.drawBitmap(newBitmap, 0, 0, paint);
-					// Draw a rect
-					outputCanvas.drawRect(rect, paint);
-
-					// Save it out
-					formattedFileCount = fileCountFormatter.format(fileCount);  
-					jpegFile = new File(Environment.getExternalStorageDirectory().getPath() + "/com.mobvcasting.mjpegffmpeg/frame_" + formattedFileCount + ".jpg");
-					fileCount++;
-					fos = new FileOutputStream(jpegFile);
-					outputBitmap.compress(CompressFormat.JPEG, 90, fos);
-					fos.flush();
-					fos.close();
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				
-				Log.v(LOGTAG,"Finished Writing Frame");
-			} else {
-				Log.v(LOGTAG,"NOT THE RIGHT FORMAT");
-			}
-		}
-		*/
+		
 	}
 	
     @Override
@@ -348,5 +323,13 @@ super.onCreate(savedInstanceState);
 	    	 Toast toast = Toast.makeText(ObscuraVideoCam.this, "Done Processing Video", Toast.LENGTH_LONG);
 	    	 toast.show();
 	     }
+	}
+
+	public void onInfo(MediaRecorder mr, int what, int extra) {
+		
+	}
+
+	public void onError(MediaRecorder mr, int what, int extra) {
+		
 	}	
 }
