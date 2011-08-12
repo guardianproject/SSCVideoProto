@@ -29,6 +29,24 @@ for version in armv5te armv7a; do
 	#FLAGS="$FLAGS --enable-encoder=libfaac --enable-encoder=libx264"
 	FLAGS="$FLAGS --enable-encoder=mpeg2video --enable-encoder=nellymoser"
 	FLAGS="$FLAGS --enable-protocol=file"
+	FLAGS="$FLAGS --enable-filter=color --enable-filter=vflip --enable-filter=overlay --enable-filter=unsharp"
+
+
+#./configure --list-filters
+#--enable-filter=NAME
+#anull			frei0r_src		scale
+#anullsink		gradfun			setdar
+#anullsrc		hflip			setpts
+#blackframe		hqdn3d			setsar
+#buffer			noformat		settb
+#color			null			slicify
+#crop			nullsink		transpose
+#cropdetect		nullsrc			unsharp
+#drawbox		ocv_smooth		vflip
+#fifo			overlay			yadif
+#format			pad
+#frei0r			pixdesctest
+
 
 	case "$version" in
 		neon)
