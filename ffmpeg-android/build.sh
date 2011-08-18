@@ -17,8 +17,18 @@ cd ffmpeg
 # Don't build any neon version for now
 for version in armv5te armv7a; do
 
+# --prefix=PREFIX          install in PREFIX []
+#  --bindir=DIR             install binaries in DIR [PREFIX/bin]
+#  --datadir=DIR            install data files in DIR [PREFIX/share/ffmpeg]
+#  --libdir=DIR             install libs in DIR [PREFIX/lib]
+#  --shlibdir=DIR           install shared libs in DIR [PREFIX/lib]
+#  --incdir=DIR             install includes in DIR [PREFIX/include]
+#  --mandir=DIR             install man page in DIR [PREFIX/share/man]
+#  --soname-prefix=PREFIX   add PREFIX before the libraries soname
+
 	DEST=../build/ffmpeg
 	FLAGS="--target-os=linux --cross-prefix=arm-linux-androideabi- --arch=arm"
+	FLAGS="$FLAGS --datadir=/data/data/org.witness.sscvideoproto/"
 	FLAGS="$FLAGS --sysroot=$SYSROOT"
 	#FLAGS="$FLAGS --soname-prefix=/data/data/com.bambuser.broadcaster/lib/"
 	FLAGS="$FLAGS --soname-prefix=/data/data/org.witness.sscvideoproto/"
@@ -30,7 +40,7 @@ for version in armv5te armv7a; do
 	FLAGS="$FLAGS --enable-encoder=mpeg2video --enable-encoder=nellymoser"
 	FLAGS="$FLAGS --enable-protocol=file"
 	FLAGS="$FLAGS --enable-filter=color --enable-filter=vflip --enable-filter=overlay --enable-filter=unsharp"
-
+	FLAGS="$FLAGS --enable-libx264 --enable-gpl"
 
 #./configure --list-filters
 #--enable-filter=NAME
@@ -50,20 +60,26 @@ for version in armv5te armv7a; do
 
 	case "$version" in
 		neon)
-			EXTRA_CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon"
-			EXTRA_LDFLAGS="-Wl,--fix-cortex-a8"
+			EXTRA_CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon -I../x264"
+			#EXTRA_LDFLAGS="-Wl,--fix-cortex-a8 -L/data/data/org.witness.sscvideoproto"
+			EXTRA_LDFLAGS="-Wl,--fix-cortex-a8 -L../x264"
+			#EXTRA_LDFLAGS="-Wl,--fix-cortex-a8"
 			# Runtime choosing neon vs non-neon requires
 			# renamed files
 			ABI="armeabi-v7a"
 			;;
 		armv7a)
-			EXTRA_CFLAGS="-march=armv7-a -mfloat-abi=softfp"
-			EXTRA_LDFLAGS=""
+			EXTRA_CFLAGS="-march=armv7-a -mfloat-abi=softfp -I../x264"
+			#EXTRA_LDFLAGS="-L/data/data/org.witness.sscvideoproto"
+			EXTRA_LDFLAGS="-L../x264"
+			#EXTRA_LDFLAGS=""
 			ABI="armeabi-v7a"
 			;;
 		*)
-			EXTRA_CFLAGS=""
-			EXTRA_LDFLAGS=""
+			EXTRA_CFLAGS="-I../x264"
+			#EXTRA_LDFLAGS="-L/data/data/org.witness.sscvideoproto"
+			EXTRA_LDFLAGS="-L../x264"
+			#EXTRA_LDFLAGS=""
 			ABI="armeabi"
 			;;
 	esac
