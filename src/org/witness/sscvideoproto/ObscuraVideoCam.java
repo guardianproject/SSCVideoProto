@@ -58,10 +58,15 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			"libavfilter.so", "libavfilter.so.1", "libavfilter.so.1.69.0",
 			"libavformat.so", "libavformat.so.52", "libavformat.so.52.88.0",
 			"libavutil.so", "libavutil.so.50", "libavutil.so.50.34.0",
-			"libswscale.so", "libswscale.so.0", "libswscale.so.0.12.0"
+			"libswscale.so", "libswscale.so.0", "libswscale.so.0.12.0",
+			"libx264-ultrafast.ffpreset", "libx264-baseline.ffpreset", 
+			"libx264-main.ffpreset" 
 	};
 
 	private void moveLibraryAssets() {
+		
+        Process process = null;
+
         for (int i = 0; i < libraryAssets.length; i++) {
 			try {
 				InputStream ffmpegInputStream = this.getAssets().open(libraryAssets[i]);
@@ -70,12 +75,26 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			
+	        try {
+	        	String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/" + libraryAssets[i]};
+	        	process = new ProcessBuilder(args).start();        	
+	        	try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+	        	process.destroy();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
         }
         
-        Process process = null;
         
         try {
-        	String[] args = {"/system/bin/chmod", "755", "/data/data/"+PACKAGENAME+"/ffmpeg"};
+        	//String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/ffmpeg"};
+        	String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/"};
         	process = new ProcessBuilder(args).start();        	
         	try {
 				process.waitFor();
@@ -83,7 +102,52 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 				e.printStackTrace();
 			}
         	process.destroy();
-        	 			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		/*
+    	// Get Some Help
+    	String[] ffmpegHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-?"};
+    	execProcess(ffmpegHelp);
+    	
+    	String[] ffmpegMoreHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-filters"};
+    	execProcess(ffmpegMoreHelp);
+
+    	String[] ffmpegMoreHelpAgain = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-codecs"};
+    	execProcess(ffmpegMoreHelpAgain);
+    	
+    	String[] ffmpegMoreHelpAgainMore = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-formats"};
+    	execProcess(ffmpegMoreHelpAgainMore);
+    	// Finish Getting Help
+    	*/
+	}
+	
+	private void execProcess(String[] command) {
+        try {
+	
+	    	StringBuilder commandSb = new StringBuilder();
+	    	for (int i = 0; i < command.length; i++) {
+	    		if (i > 0) {
+	    			commandSb.append(" ");
+	    		}
+	    		commandSb.append(command[i]);
+	    	}
+	    	Log.v(LOGTAG, commandSb.toString());
+	    	Process prrocess = new ProcessBuilder(command).redirectErrorStream(true).start();         	
+			
+			OutputStream outputStream = prrocess.getOutputStream();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(prrocess.getInputStream()));
+	
+			String line;
+			
+			Log.v(LOGTAG,"***Starting Command***");
+			while ((line = reader.readLine()) != null)
+			{
+				Log.v(LOGTAG,"***"+line+"***");
+			}
+			Log.v(LOGTAG,"***Ending Command***");
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -315,12 +379,22 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	        	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
 	        	
 	        	// Trying with a simple vflip filter, no overlaying yet
-	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-f", "mov", "-vcodec", "mpeg1video", "-b", "800k", "-s", "640x480", "-acodec", "aac", "-strict", "experimental", "-vf", "\"vflip\"", "-i", recordingFile.getPath(), savePath.getPath()+"/output.mov"};
-	        	StringBuilder ffmpegCmmandSb = new StringBuilder();
+	        	//String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-f", "mov", "-vcodec", "mpeg1video", "-b", "800k", "-s", "640x480", "-acodec", "aac", "-strict", "experimental", "-vf", "vflip", "-i", recordingFile.getPath(), savePath.getPath()+"/output.mov"};
+	        	
+	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
+	        					"-vcodec", "libx264", "-b", "500k", "-vpre", "ultrafast", "-s", "720x480", "-r", "15",
+	        					"-vf", "drawbox=10:20:200:60:red@0.5",
+	        					"-acodec", "copy",
+	        					"-f", "mp4", savePath.getPath()+"/output.mp4"};
+	        	
+	        	StringBuilder ffmpegCommandSb = new StringBuilder();
 	        	for (int i = 0; i < ffmpegCommand.length; i++) {
-	        		ffmpegCmmandSb.append(ffmpegCommand[i]);
+	        		if (i > 0) {
+	        			ffmpegCommandSb.append(" ");
+	        		}
+	        		ffmpegCommandSb.append(ffmpegCommand[i]);
 	        	}
-	        	Log.v(LOGTAG, ffmpegCmmandSb.toString());
+	        	Log.v(LOGTAG, ffmpegCommandSb.toString());
 				ffmpegProcess = new ProcessBuilder(ffmpegCommand).redirectErrorStream(true).start();         	
 				
 				OutputStream ffmpegOutStream = ffmpegProcess.getOutputStream();
