@@ -1,47 +1,69 @@
 package org.witness.sscvideoproto;
 
 import android.app.Activity;
+import android.net.Uri;
 import android.os.Bundle;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Vector;
 
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PointF;
+import android.graphics.RectF;
+import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class ObscuraVideoCam extends Activity implements OnClickListener, MediaRecorder.OnInfoListener, 
-MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
+public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClickListener, MediaRecorder.OnInfoListener, 
+															MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
 { 
-
 	public static final String LOGTAG = "OBSCURAVIDEOCAM";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
+	
+	public static final float DEFAULT_X_SIZE = 10;
+	public static final float DEFAULT_Y_SIZE = 10;
 	
 	private MediaRecorder recorder;
 	private SurfaceHolder holder;
 	private CamcorderProfile camcorderProfile;
 	private Camera camera;	
 	
+	// Vector of ObscureRegion objects
+	private Vector obscureRegions = new Vector();
+	
 	boolean recording = false;
 	boolean usecamera = true;
 	boolean previewRunning = false;
-
+	
+	long recordStartTime = 0;
+	
 	Button recordButton;
 	
 	Camera.Parameters p;
@@ -51,16 +73,17 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	File recordingFile;
 	File savePath;
 		
+	File overlayImage; 
+
 	String[] libraryAssets = {"ffmpeg",
-			"libavcodec.so", "libavcodec.so.52", "libavcodec.so.52.99.1",
-			"libavcore.so", "libavcore.so.0", "libavcore.so.0.16.0",
-			"libavdevice.so", "libavdevice.so.52", "libavdevice.so.52.2.2",
-			"libavfilter.so", "libavfilter.so.1", "libavfilter.so.1.69.0",
-			"libavformat.so", "libavformat.so.52", "libavformat.so.52.88.0",
-			"libavutil.so", "libavutil.so.50", "libavutil.so.50.34.0",
-			"libswscale.so", "libswscale.so.0", "libswscale.so.0.12.0",
-			"libx264-ultrafast.ffpreset", "libx264-baseline.ffpreset", 
-			"libx264-main.ffpreset" 
+			"libavcodec.so", "libavcodec.so.53", "libavcodec.so.53.7.0",
+			"libavdevice.so", "libavdevice.so.53", "libavdevice.so.53.1.1",
+			"libavfilter.so", "libavfilter.so.2", "libavfilter.so.2.23.0",
+			"libavformat.so", "libavformat.so.53", "libavformat.so.53.4.0",
+			"libavutil.so", "libavutil.so.51", "libavutil.so.51.9.1",
+			"libpostproc.so", "libpostproc.so.51", "libpostproc.so.51.2.0",
+			"libswscale.so", "libswscale.so.2", "libswscale.so.2.0.0",
+			"libx264-baseline.ffpreset", "libx264-ipod320.ffpreset" 
 	};
 
 	private void moveLibraryAssets() {
@@ -106,7 +129,6 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			e.printStackTrace();
 		}
 		
-		/*
     	// Get Some Help
     	String[] ffmpegHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-?"};
     	execProcess(ffmpegHelp);
@@ -120,6 +142,7 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
     	String[] ffmpegMoreHelpAgainMore = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-formats"};
     	execProcess(ffmpegMoreHelpAgainMore);
     	// Finish Getting Help
+		/*
     	*/
 	}
 	
@@ -156,6 +179,8 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	private void createCleanSavePath() {
 		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
+		
+		createOverlayImage();
 		
 		Log.v(LOGTAG,"savePath:" + savePath.getPath());
 		if (savePath.exists()) {
@@ -195,8 +220,11 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 		holder.addCallback(this);
 		holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	
-		cameraView.setClickable(true);
-		cameraView.setOnClickListener(this);
+		//cameraView.setClickable(true);
+		//cameraView.setOnClickListener(this);
+		
+		//cameraView.setListener(this);
+
 	}
 	
 	private void prepareRecorder() {
@@ -284,6 +312,7 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 			//prepareRecorder();
 		} else {
 			recording = true;
+			recordStartTime = SystemClock.uptimeMillis();
 			recorder.start();
 			Log.v(LOGTAG, "Recording Started");
 		}
@@ -364,6 +393,24 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
         super.onConfigurationChanged(conf);
     }	
 	    
+    private void createOverlayImage() {
+		try {
+			overlayImage = new File(savePath,"overlay.jpg");
+			
+	    	Bitmap overlayBitmap = Bitmap.createBitmap(720, 480, Bitmap.Config.RGB_565);
+	    	Canvas obscuredCanvas = new Canvas(overlayBitmap);
+	    	Paint obscuredPaint = new Paint();   
+	    	Matrix obscuredMatrix = new Matrix();
+	        
+	    	obscuredCanvas.drawOval(new RectF(10,10,100,100), obscuredPaint);
+	    	
+	    	OutputStream overlayImageFileOS = new FileOutputStream(overlayImage);
+			overlayBitmap.compress(CompressFormat.JPEG, 90, overlayImageFileOS);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+    }
+    
 	private class ProcessVideo extends AsyncTask<Void, Integer, Void> {
 		@Override
 		protected Void doInBackground(Void... params) {
@@ -382,8 +429,9 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	        	//String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-f", "mov", "-vcodec", "mpeg1video", "-b", "800k", "-s", "640x480", "-acodec", "aac", "-strict", "experimental", "-vf", "vflip", "-i", recordingFile.getPath(), savePath.getPath()+"/output.mov"};
 	        	
 	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
-	        					"-vcodec", "libx264", "-b", "500k", "-vpre", "ultrafast", "-s", "720x480", "-r", "15",
-	        					"-vf", "drawbox=10:20:200:60:red@0.5",
+	        					"-vcodec", "libx264", "-b", "3000k", "-vpre", "baseline", "-s", "720x480", "-r", "30",
+	        					//"-vf", "drawbox=10:20:200:60:red@0.5",
+	        					"-vf" , "\"movie="+ overlayImage.getPath() +" [logo];[in][logo] overlay=0:0 [out]\"",
 	        					"-acodec", "copy",
 	        					"-f", "mp4", savePath.getPath()+"/output.mp4"};
 	        	
@@ -424,6 +472,11 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 	     protected void onPostExecute(Void... result) {
 	    	 Toast toast = Toast.makeText(ObscuraVideoCam.this, "Done Processing Video", Toast.LENGTH_LONG);
 	    	 toast.show();
+	    	 
+	    	 Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
+	    	 Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
+	    	 intent.setDataAndType(data, "video/mp4"); 
+	    	 startActivity(intent);
 	     }
 	}
 
@@ -433,5 +486,93 @@ MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback
 
 	public void onError(MediaRecorder mr, int what, int extra) {
 		
+	}
+
+	public boolean onTouch(View v, MotionEvent event) {
+		boolean handled = false;
+		
+		switch (event.getAction() & MotionEvent.ACTION_MASK) {
+			case MotionEvent.ACTION_DOWN:
+				// Single Finger down
+
+				ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(),event.getY());
+				obscureRegions.add(singleFingerRegion);
+				
+				break;
+				
+			case MotionEvent.ACTION_POINTER_DOWN:
+				// Two Fingers down
+				
+				ObscureRegion twoFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
+				obscureRegions.add(twoFingerRegion);
+				
+				break;
+				
+			case MotionEvent.ACTION_UP:
+				// Single Finger Up
+				
+				ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+				obscureRegions.add(singleFingerUpRegion);
+				
+				break;
+				
+			case MotionEvent.ACTION_POINTER_UP:
+				// Multiple Finger Up
+				
+				ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+				obscureRegions.add(twoFingerUpRegion);
+				
+				break;
+				
+			case MotionEvent.ACTION_MOVE:
+				// Calculate distance moved
+				
+				ObscureRegion twoFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
+				obscureRegions.add(twoFingerMoveRegion);
+	
+				handled = true;
+
+				break;
+		}
+
+		return handled; // indicate event was handled	
 	}	
+	
+	class ObscureRegion {
+		// Number of fingers
+		int numFingers = 1;
+		
+		// Finger 1
+		float sx = 0;
+		float sy = 0;
+		
+		// Finger 2
+		float ex = 0;
+		float ey = 0;
+		
+		// Time in ms
+		long time = 0;
+		
+		public ObscureRegion(long _time, float _sx, float _sy, float _ex, float _ey) {
+			time = _time;
+			numFingers = 2;
+			sx = _sx;
+			sy = _sy;
+			ex = _ex;
+			ey = _ey;
+		}
+		
+		public ObscureRegion(long _time, float _sx, float _sy) {
+			time = _time;
+			numFingers = 1;
+			sx = _sx - DEFAULT_X_SIZE/2;
+			sy = _sy - DEFAULT_Y_SIZE/2;
+			ex = sx + DEFAULT_X_SIZE;
+			ey = sy + DEFAULT_Y_SIZE;
+		}
+		
+		public RectF getRectF() {
+			return new RectF(sx, sy, ex, ey);
+		}
+	}
 }
