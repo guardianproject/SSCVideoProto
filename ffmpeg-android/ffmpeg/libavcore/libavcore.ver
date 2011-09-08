@@ -1,4 +1,0 @@
-LIBAVCORE_0 {
-        global: av_*; ff_*; avcore*;
-        local: *;
-};
