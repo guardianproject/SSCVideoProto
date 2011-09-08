@@ -1,3 +1,0 @@
-[submodule "ffmpeg-android/x264"]
-	path = ffmpeg-android/x264
-	url = git://git.videolan.org/x264.git
