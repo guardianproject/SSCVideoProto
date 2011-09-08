@@ -1,0 +1,9 @@
+# This is a set of coloured bars moving from left to right
+# Each bar lasts for a second, overlapping for 0.5s with left and
+# right neighbours.
+# re-ordered to test the sorting of vf_redact
+# another comment for testing
+#start time, end time, sx, sy, ex, ey  
+0,1,0,50,0,1000,red
+1,3,100,100,200,200,green
+
