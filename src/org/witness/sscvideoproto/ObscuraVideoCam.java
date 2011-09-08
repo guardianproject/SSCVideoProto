@@ -7,12 +7,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.Vector;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
@@ -28,6 +31,7 @@ import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -61,7 +65,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	boolean recording = false;
 	boolean usecamera = true;
 	boolean previewRunning = false;
-	
+		
 	long recordStartTime = 0;
 	
 	Button recordButton;
@@ -72,19 +76,13 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 	File recordingFile;
 	File savePath;
-		
+	
+	File redactSettingsFile;
+	PrintWriter redactSettingsPrintWriter;
+	
 	File overlayImage; 
 
-	String[] libraryAssets = {"ffmpeg",
-			"libavcodec.so", "libavcodec.so.53", "libavcodec.so.53.7.0",
-			"libavdevice.so", "libavdevice.so.53", "libavdevice.so.53.1.1",
-			"libavfilter.so", "libavfilter.so.2", "libavfilter.so.2.23.0",
-			"libavformat.so", "libavformat.so.53", "libavformat.so.53.4.0",
-			"libavutil.so", "libavutil.so.51", "libavutil.so.51.9.1",
-			"libpostproc.so", "libpostproc.so.51", "libpostproc.so.51.2.0",
-			"libswscale.so", "libswscale.so.2", "libswscale.so.2.0.0",
-			"libx264-baseline.ffpreset", "libx264-ipod320.ffpreset" 
-	};
+	String[] libraryAssets = {"ffmpeg","redact_unsort.txt"};
 
 	private void moveLibraryAssets() {
 		
@@ -114,7 +112,6 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			
         }
         
-        
         try {
         	//String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/ffmpeg"};
         	String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/"};
@@ -129,6 +126,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			e.printStackTrace();
 		}
 		
+		/*
     	// Get Some Help
     	String[] ffmpegHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-?"};
     	execProcess(ffmpegHelp);
@@ -142,8 +140,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
     	String[] ffmpegMoreHelpAgainMore = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-formats"};
     	execProcess(ffmpegMoreHelpAgainMore);
     	// Finish Getting Help
-		/*
-    	*/
+    	 */
 	}
 	
 	private void execProcess(String[] command) {
@@ -179,6 +176,14 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	private void createCleanSavePath() {
 		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
+		
+		try {
+			redactSettingsFile = new File("/data/data/"+PACKAGENAME+"/redact_unsort.txt");
+			FileWriter redactSettingsFileWriter = new FileWriter(redactSettingsFile);
+			redactSettingsPrintWriter = new PrintWriter(redactSettingsFileWriter);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		createOverlayImage();
 		
@@ -219,12 +224,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		holder = cameraView.getHolder();
 		holder.addCallback(this);
 		holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-	
-		//cameraView.setClickable(true);
-		//cameraView.setOnClickListener(this);
-		
-		//cameraView.setListener(this);
-
+			
+		cameraView.setOnTouchListener(this);
 	}
 	
 	private void prepareRecorder() {
@@ -243,48 +244,31 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 		createCleanSavePath();
 		
-		// This is all very sloppy
-		if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.THREE_GPP) {
-	    	try {
+		try {
+			
+			// This is all very sloppy
+			if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.THREE_GPP) {
 				recordingFile = File.createTempFile("videocapture", ".3gp", savePath);
 				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
 				recorder.setOutputFile(recordingFile.getAbsolutePath());
-			} catch (IOException e) {
-				Log.v(LOGTAG,"Couldn't create file");
-				e.printStackTrace();
-				finish();
-			}
-		} else if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.MPEG_4) {
-	    	try {
+			} else if (camcorderProfile.fileFormat == MediaRecorder.OutputFormat.MPEG_4) {
 	    		recordingFile = File.createTempFile("videocapture", ".mp4", savePath);
 				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
 				recorder.setOutputFile(recordingFile.getAbsolutePath());
-			} catch (IOException e) {
-				Log.v(LOGTAG,"Couldn't create file");
-				e.printStackTrace();
-				finish();
-			}
-		} else {
-	    	try {
+			} else {
 	    		recordingFile = File.createTempFile("videocapture", ".mp4", savePath);
 				Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
 				recorder.setOutputFile(recordingFile.getAbsolutePath());
-			} catch (IOException e) {
-				Log.v(LOGTAG,"Couldn't create file");
-				e.printStackTrace();
-				finish();
 			}
-	
-		}
 		//recorder.setMaxDuration(50000); // 50 seconds
 		//recorder.setMaxFileSize(5000000); // Approximately 5 megabytes
 		
-		try {
 			recorder.prepare();
-		} catch (IllegalStateException e) {
+		} catch (IOException e) {
+			Log.v(LOGTAG,"Couldn't create file");
 			e.printStackTrace();
 			finish();
-		} catch (IOException e) {
+		} catch (IllegalStateException e) {
 			e.printStackTrace();
 			finish();
 		}
@@ -304,12 +288,22 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			recording = false;
 			Log.v(LOGTAG, "Recording Stopped");
 
+			// Write out the finger data
+			for (int i = 0; i < obscureRegions.size(); i++) {
+				ObscureRegion or = (ObscureRegion)obscureRegions.get(i);
+				float ftime = or.time/1000;
+				
+				String orString = "" + ftime + ",1," + or.sx + "," + or.sy + "," + or.ex + "," + or.ey; 
+				redactSettingsPrintWriter.println(orString);
+			}
+			redactSettingsPrintWriter.close();
+			
 			// Convert to video
 			processVideo = new ProcessVideo();
 			processVideo.execute();
-			
+							
 			// Let's prepareRecorder so we can record again
-			//prepareRecorder();
+			//prepareRecorder(); // We lose file name here
 		} else {
 			recording = true;
 			recordStartTime = SystemClock.uptimeMillis();
@@ -362,7 +356,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				Log.e(LOGTAG,e.getMessage());
 				e.printStackTrace();
 			}	
-			
+
 			prepareRecorder();	
 		}
 	}
@@ -415,25 +409,31 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		@Override
 		protected Void doInBackground(Void... params) {
 
-	        Process ffmpegProcess = null;
+			PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
+			wl.acquire();
 	        
+			Process ffmpegProcess = null;
 	        try {
-	        		        	
-	        	// ffmpeg -i VID_20110811_122115.3gp -f mov -vcodec mpeg1video -b 800k -s 640x480 -ab 64k -acodec aac -strict experimental -vf "color=red:320x240 [over]; [in][over] overlay [out]" output.mov
-				//String[] args2 = {"/data/data/com.mobvcasting.ffmpegcommandlinetest/ffmpeg", "-y", "-i", "/data/data/com.mobvcasting.ffmpegcommandlinetest/", "-vcodec", "copy", "-acodec", "copy", "-f", "flv", "rtmp://192.168.43.176/live/thestream"};
-				
+	        		        					
 	        	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
 	        	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
-	        	
-	        	// Trying with a simple vflip filter, no overlaying yet
-	        	//String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-f", "mov", "-vcodec", "mpeg1video", "-b", "800k", "-s", "640x480", "-acodec", "aac", "-strict", "experimental", "-vf", "vflip", "-i", recordingFile.getPath(), savePath.getPath()+"/output.mov"};
-	        	
+	        		        	
+	        	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
+	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
+    					"-vcodec", "libx264", "-b", "3000k", "-s", "720x480", "-r", "30",
+    					"-vf" , "redact=/data/data/"+PACKAGENAME+"/redact_unsort.txt",
+    					"-acodec", "copy",
+    					"-f", "mp4", savePath.getPath()+"/output.mp4"};
+
+	        	/*
 	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
 	        					"-vcodec", "libx264", "-b", "3000k", "-vpre", "baseline", "-s", "720x480", "-r", "30",
 	        					//"-vf", "drawbox=10:20:200:60:red@0.5",
 	        					"-vf" , "\"movie="+ overlayImage.getPath() +" [logo];[in][logo] overlay=0:0 [out]\"",
 	        					"-acodec", "copy",
 	        					"-f", "mp4", savePath.getPath()+"/output.mp4"};
+	        	*/
 	        	
 	        	StringBuilder ffmpegCommandSb = new StringBuilder();
 	        	for (int i = 0; i < ffmpegCommand.length; i++) {
@@ -450,10 +450,13 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 
 				String line;
 				
+				int count = 0;
 				Log.v(LOGTAG,"***Starting FFMPEG***");
 				while ((line = reader.readLine()) != null)
 				{
 					Log.v(LOGTAG,"***"+line+"***");
+					count++;
+		            publishProgress(count);
 				}
 				Log.v(LOGTAG,"***Ending FFMPEG***");
 	
@@ -466,10 +469,20 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	        	ffmpegProcess.destroy();        
 	        }
 	        
+	        wl.release();
+		     
 	        return null;
 		}
 		
-	     protected void onPostExecute(Void... result) {
+		@Override
+	    protected void onProgressUpdate(Integer... progress) {
+			Log.v(LOGTAG,"Progress: " + progress[0]);
+	    }
+		
+		@Override
+	    protected void onPostExecute(Void result) {
+	    	 Log.v(LOGTAG,"***ON POST EXECUTE***");
+
 	    	 Toast toast = Toast.makeText(ObscuraVideoCam.this, "Done Processing Video", Toast.LENGTH_LONG);
 	    	 toast.show();
 	    	 
@@ -487,7 +500,9 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	public void onError(MediaRecorder mr, int what, int extra) {
 		
 	}
-
+	
+	//PrintWriter redactSettingsPrintWriter
+	
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
 		
@@ -498,6 +513,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(),event.getY());
 				obscureRegions.add(singleFingerRegion);
 				
+				handled = true;
+				
 				break;
 				
 			case MotionEvent.ACTION_POINTER_DOWN:
@@ -505,6 +522,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				
 				ObscureRegion twoFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
 				obscureRegions.add(twoFingerRegion);
+				
+				handled = true;
 				
 				break;
 				
@@ -540,18 +559,18 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 	class ObscureRegion {
 		// Number of fingers
-		int numFingers = 1;
+		public int numFingers = 1;
 		
 		// Finger 1
-		float sx = 0;
-		float sy = 0;
+		public float sx = 0;
+		public float sy = 0;
 		
 		// Finger 2
-		float ex = 0;
-		float ey = 0;
+		public float ex = 0;
+		public float ey = 0;
 		
 		// Time in ms
-		long time = 0;
+		public long time = 0;
 		
 		public ObscureRegion(long _time, float _sx, float _sy, float _ex, float _ey) {
 			time = _time;
@@ -560,6 +579,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			sy = _sy;
 			ex = _ex;
 			ey = _ey;
+
+			Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
 		}
 		
 		public ObscureRegion(long _time, float _sx, float _sy) {
@@ -569,6 +590,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			sy = _sy - DEFAULT_Y_SIZE/2;
 			ex = sx + DEFAULT_X_SIZE;
 			ey = sy + DEFAULT_Y_SIZE;
+			
+			Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
 		}
 		
 		public RectF getRectF() {
