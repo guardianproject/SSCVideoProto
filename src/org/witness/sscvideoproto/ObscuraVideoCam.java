@@ -1,6 +1,7 @@
 package org.witness.sscvideoproto;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.net.Uri;
 import android.os.Bundle;
 import java.io.BufferedReader;
@@ -51,8 +52,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	public static final String LOGTAG = "OBSCURAVIDEOCAM";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
 	
-	public static final float DEFAULT_X_SIZE = 10;
-	public static final float DEFAULT_Y_SIZE = 10;
+	public static final String DEFAULT_COLOR = "black";
+	
+	public static final float DEFAULT_X_SIZE = 100;
+	public static final float DEFAULT_Y_SIZE = 100;
 	
 	private MediaRecorder recorder;
 	private SurfaceHolder holder;
@@ -82,8 +85,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 	File overlayImage; 
 
-	String[] libraryAssets = {"ffmpeg","redact_unsort.txt"};
+	String[] libraryAssets = {"ffmpeg"};
 
+	ProgressDialog progressDialog;
+	
 	private void moveLibraryAssets() {
 		
         Process process = null;
@@ -176,14 +181,6 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	private void createCleanSavePath() {
 		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
-		
-		try {
-			redactSettingsFile = new File("/data/data/"+PACKAGENAME+"/redact_unsort.txt");
-			FileWriter redactSettingsFileWriter = new FileWriter(redactSettingsFile);
-			redactSettingsPrintWriter = new PrintWriter(redactSettingsFileWriter);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		
 		createOverlayImage();
 		
@@ -289,14 +286,34 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			Log.v(LOGTAG, "Recording Stopped");
 
 			// Write out the finger data
-			for (int i = 0; i < obscureRegions.size(); i++) {
-				ObscureRegion or = (ObscureRegion)obscureRegions.get(i);
-				float ftime = or.time/1000;
+			try {
+				//Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt"
+				redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
 				
-				String orString = "" + ftime + ",1," + or.sx + "," + or.sy + "," + or.ex + "," + or.ey; 
-				redactSettingsPrintWriter.println(orString);
+				FileWriter redactSettingsFileWriter = new FileWriter(redactSettingsFile);
+				redactSettingsPrintWriter = new PrintWriter(redactSettingsFileWriter);
+				
+				for (int i = 0; i < obscureRegions.size(); i++) {
+					ObscureRegion or = (ObscureRegion)obscureRegions.get(i);
+					float ftime = (float)or.time/(float)1000;
+					float etime = ftime + 1;
+					if (i < obscureRegions.size() - 1) {
+						etime = (float)((ObscureRegion)obscureRegions.get(i+1)).time/(float)1000;
+					}
+					//left, right, top, bottom
+					String orString = "" + ftime + ","+etime+"," + (int)or.sx + "," + (int)or.ex + "," + (int)or.sy + "," + (int)or.ey + "," + DEFAULT_COLOR;
+					Log.v(LOGTAG,"Writing: " + orString);
+					redactSettingsPrintWriter.println(orString);
+				}
+				redactSettingsPrintWriter.flush();
+				redactSettingsPrintWriter.close();
+
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			redactSettingsPrintWriter.close();
+			
+			progressDialog = ProgressDialog.show(ObscuraVideoCam.this, "", 
+                    "Loading. Please wait...", true);
 			
 			// Convert to video
 			processVideo = new ProcessVideo();
@@ -422,7 +439,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	        	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
 	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
     					"-vcodec", "libx264", "-b", "3000k", "-s", "720x480", "-r", "30",
-    					"-vf" , "redact=/data/data/"+PACKAGENAME+"/redact_unsort.txt",
+    					"-vf" , "redact=" + Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt",
     					"-acodec", "copy",
     					"-f", "mp4", savePath.getPath()+"/output.mp4"};
 
@@ -483,13 +500,19 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	    protected void onPostExecute(Void result) {
 	    	 Log.v(LOGTAG,"***ON POST EXECUTE***");
 
-	    	 Toast toast = Toast.makeText(ObscuraVideoCam.this, "Done Processing Video", Toast.LENGTH_LONG);
-	    	 toast.show();
+	    	 progressDialog.cancel();
 	    	 
 	    	 Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
 	    	 Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
 	    	 intent.setDataAndType(data, "video/mp4"); 
 	    	 startActivity(intent);
+	    	 
+	    	 /*
+        	Intent share = new Intent(Intent.ACTION_SEND);
+        	share.setType("video/mp4");
+        	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(savePath.getPath()+"/output.mp4"));
+        	startActivity(Intent.createChooser(share, "Share Video"));    	
+			*/
 	     }
 	}
 
@@ -503,52 +526,70 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 	//PrintWriter redactSettingsPrintWriter
 	
+	int currentNumFingers = 0;
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
 		
 		switch (event.getAction() & MotionEvent.ACTION_MASK) {
 			case MotionEvent.ACTION_DOWN:
 				// Single Finger down
-
-				ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(),event.getY());
-				obscureRegions.add(singleFingerRegion);
+				currentNumFingers = 1;
 				
+				if (recording) {
+					ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(),event.getY());
+					obscureRegions.add(singleFingerRegion);
+				}
 				handled = true;
 				
 				break;
 				
 			case MotionEvent.ACTION_POINTER_DOWN:
 				// Two Fingers down
+				currentNumFingers = 2;
 				
-				ObscureRegion twoFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
-				obscureRegions.add(twoFingerRegion);
-				
+				if (recording) {
+					ObscureRegion twoFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
+					obscureRegions.add(twoFingerRegion);
+				}
 				handled = true;
 				
 				break;
 				
 			case MotionEvent.ACTION_UP:
 				// Single Finger Up
+				currentNumFingers = 0;
 				
-				ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
-				obscureRegions.add(singleFingerUpRegion);
+				if (recording) {
+					ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+					obscureRegions.add(singleFingerUpRegion);
+				}
 				
 				break;
 				
 			case MotionEvent.ACTION_POINTER_UP:
 				// Multiple Finger Up
+				currentNumFingers = 0;
 				
-				ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
-				obscureRegions.add(twoFingerUpRegion);
+				if (recording) {
+					ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+					obscureRegions.add(twoFingerUpRegion);
+				}
 				
 				break;
 				
 			case MotionEvent.ACTION_MOVE:
 				// Calculate distance moved
 				
-				ObscureRegion twoFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
-				obscureRegions.add(twoFingerMoveRegion);
-	
+				if (recording) {
+					if (currentNumFingers == 2) {
+						ObscureRegion twoFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
+						obscureRegions.add(twoFingerMoveRegion);
+					} else if (currentNumFingers == 1) {
+						ObscureRegion oneFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0));
+						obscureRegions.add(oneFingerMoveRegion);
+					}
+				}
+				
 				handled = true;
 
 				break;
