@@ -1,6 +1,7 @@
 package org.witness.sscvideoproto;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +18,7 @@ import java.io.PrintWriter;
 import java.util.Vector;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
@@ -49,6 +51,9 @@ import android.widget.Toast;
 public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClickListener, MediaRecorder.OnInfoListener, 
 															MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
 { 
+	public static final int PLAY = 0;
+	public static final int SHARE = 1;
+	
 	public static final String LOGTAG = "OBSCURAVIDEOCAM";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
 	
@@ -88,6 +93,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	String[] libraryAssets = {"ffmpeg"};
 
 	ProgressDialog progressDialog;
+	AlertDialog choiceDialog;
 	
 	private void moveLibraryAssets() {
 		
@@ -313,7 +319,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			}
 			
 			progressDialog = ProgressDialog.show(ObscuraVideoCam.this, "", 
-                    "Loading. Please wait...", true);
+                    "Processing. Please wait...", true);
 			
 			// Convert to video
 			processVideo = new ProcessVideo();
@@ -499,21 +505,47 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		@Override
 	    protected void onPostExecute(Void result) {
 	    	 Log.v(LOGTAG,"***ON POST EXECUTE***");
-
-	    	 progressDialog.cancel();
-	    	 
-	    	 Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
-	    	 Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
-	    	 intent.setDataAndType(data, "video/mp4"); 
-	    	 startActivity(intent);
-	    	 
-	    	 /*
-        	Intent share = new Intent(Intent.ACTION_SEND);
-        	share.setType("video/mp4");
-        	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(savePath.getPath()+"/output.mp4"));
-        	startActivity(Intent.createChooser(share, "Share Video"));    	
-			*/
+	    	 showPlayShareDialog();
 	     }
+	}
+	
+	private void showPlayShareDialog() {
+		progressDialog.cancel();
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(ObscuraVideoCam.this);
+		builder.setMessage("Play or Share?")
+			.setCancelable(true)
+			.setPositiveButton("Play", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int id) {
+					playVideo();
+				}
+			})
+			.setNegativeButton("Share", new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int id) {
+	            	shareVideo();
+	            }
+		    });
+		AlertDialog alert = builder.create();
+		alert.show();
+	}
+	
+	private void playVideo() {
+    	Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
+   	 	Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
+   	 	intent.setDataAndType(data, "video/mp4"); 
+   	 	startActivityForResult(intent,PLAY);
+	}
+	
+	private void shareVideo() {
+    	Intent share = new Intent(Intent.ACTION_SEND);
+    	share.setType("video/mp4");
+    	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(savePath.getPath()+"/output.mp4"));
+    	startActivityForResult(Intent.createChooser(share, "Share Video"),SHARE);     
+	}
+	
+	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		super.onActivityResult(requestCode, resultCode, intent);
+		showPlayShareDialog();
 	}
 
 	public void onInfo(MediaRecorder mr, int what, int extra) {
