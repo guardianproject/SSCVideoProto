@@ -37,6 +37,7 @@ import android.os.Environment;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -61,6 +62,9 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 	public static final float DEFAULT_X_SIZE = 100;
 	public static final float DEFAULT_Y_SIZE = 100;
+	
+	private float calcDefaultXSize = DEFAULT_X_SIZE;
+	private float calcDefaultYSize = DEFAULT_Y_SIZE;
 	
 	private MediaRecorder recorder;
 	private SurfaceHolder holder;
@@ -95,6 +99,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	ProgressDialog progressDialog;
 	AlertDialog choiceDialog;
 	
+	Display display; 
+	int screenWidth;
+	int screenHeight;					
+	
 	private void moveLibraryAssets() {
 		
         Process process = null;
@@ -109,7 +117,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			}
 			
 	        try {
-	        	String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/" + libraryAssets[i]};
+	        	String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/" + libraryAssets[i]};
 	        	process = new ProcessBuilder(args).start();        	
 	        	try {
 					process.waitFor();
@@ -124,8 +132,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
         }
         
         try {
-        	//String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/ffmpeg"};
-        	String[] args = {"/system/bin/chmod", "777", "/data/data/"+PACKAGENAME+"/"};
+        	//String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/ffmpeg"};
+        	String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/"};
         	process = new ProcessBuilder(args).start();        	
         	try {
 				process.waitFor();
@@ -161,7 +169,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	    	for (int i = 0; i < command.length; i++) {
 	    		if (i > 0) {
 	    			commandSb.append(" ");
-	    		}
+	    		}	    		
 	    		commandSb.append(command[i]);
 	    	}
 	    	Log.v(LOGTAG, commandSb.toString());
@@ -209,6 +217,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		File libraryAssetsDirectory = new File("/data/data/" + PACKAGENAME);
+		if (!libraryAssetsDirectory.exists()) {
+			libraryAssetsDirectory.mkdirs();
+		}
 		moveLibraryAssets();
 		
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -216,7 +228,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 	
-		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
+		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_LOW);
 	
 		setContentView(R.layout.main);
 		
@@ -229,6 +241,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 			
 		cameraView.setOnTouchListener(this);
+		
+		display = getWindowManager().getDefaultDisplay(); 
+		screenWidth = display.getWidth();
+		screenHeight = display.getHeight();					
 	}
 	
 	private void prepareRecorder() {
@@ -244,7 +260,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		recorder.setVideoSource(MediaRecorder.VideoSource.DEFAULT);
 	
 		recorder.setProfile(camcorderProfile);
-	
+		
+		calcDefaultXSize = (float)camcorderProfile.videoFrameWidth/(float)screenWidth * (float)DEFAULT_X_SIZE;
+		calcDefaultYSize = (float)camcorderProfile.videoFrameHeight/(float)screenHeight * (float)DEFAULT_Y_SIZE;
+		
 		createCleanSavePath();
 		
 		try {
@@ -441,13 +460,19 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	        		        					
 	        	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
 	        	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
-	        		        	
+	        	
+	        	String widthxheight = camcorderProfile.videoFrameWidth + "x" + camcorderProfile.videoFrameHeight;
+	        	
 	        	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
 	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
-    					"-vcodec", "libx264", "-b", "3000k", "-s", "720x480", "-r", "30",
+    					"-vcodec", "libx264", "-b", "1000k", "-s", widthxheight, "-r", ""+camcorderProfile.videoFrameRate,
     					"-vf" , "redact=" + Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt",
-    					"-acodec", "copy",
+    					"-an",
     					"-f", "mp4", savePath.getPath()+"/output.mp4"};
+
+	        	// Need to make sure this will create a legitimate mp4 file
+	        	//"-acodec", "ac3", "-ac", "1", "-ar", "16000", "-ab", "32k",
+	        	//"-acodec", "copy",
 
 	        	/*
 	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
@@ -561,14 +586,18 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	int currentNumFingers = 0;
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
-		
+
+		float x = event.getX()/(float)screenWidth * (float)camcorderProfile.videoFrameWidth;
+		float y = event.getY()/(float)screenHeight * (float)camcorderProfile.videoFrameHeight;
+
 		switch (event.getAction() & MotionEvent.ACTION_MASK) {
 			case MotionEvent.ACTION_DOWN:
 				// Single Finger down
 				currentNumFingers = 1;
 				
 				if (recording) {
-					ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(),event.getY());
+					
+					ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,x);
 					obscureRegions.add(singleFingerRegion);
 				}
 				handled = true;
@@ -592,7 +621,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				currentNumFingers = 0;
 				
 				if (recording) {
-					ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+					ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,y,x,y);
 					obscureRegions.add(singleFingerUpRegion);
 				}
 				
@@ -603,7 +632,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				currentNumFingers = 0;
 				
 				if (recording) {
-					ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(0),event.getY(0));
+					ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,y,x,y);
 					obscureRegions.add(twoFingerUpRegion);
 				}
 				
@@ -617,7 +646,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 						ObscureRegion twoFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
 						obscureRegions.add(twoFingerMoveRegion);
 					} else if (currentNumFingers == 1) {
-						ObscureRegion oneFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0));
+						ObscureRegion oneFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,x);
 						obscureRegions.add(oneFingerMoveRegion);
 					}
 				}
@@ -659,10 +688,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		public ObscureRegion(long _time, float _sx, float _sy) {
 			time = _time;
 			numFingers = 1;
-			sx = _sx - DEFAULT_X_SIZE/2;
-			sy = _sy - DEFAULT_Y_SIZE/2;
-			ex = sx + DEFAULT_X_SIZE;
-			ey = sy + DEFAULT_Y_SIZE;
+			sx = _sx - calcDefaultXSize/2;
+			sy = _sy - calcDefaultXSize/2;
+			ex = sx + calcDefaultXSize;
+			ey = sy + calcDefaultXSize;
 			
 			Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
 		}
