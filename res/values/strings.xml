@@ -2,4 +2,8 @@
 <resources>
     <string name="hello">Hello World, ObscuraVideoCam!</string>
     <string name="app_name">Obscura Video Cam</string>
+    <string name="about">about</string>
+    <string name="about2">about2</string>
+    <string name="about3">about3</string>
+    <string name="SplashTextViewString">SplashTextViewString</string>
 </resources>
