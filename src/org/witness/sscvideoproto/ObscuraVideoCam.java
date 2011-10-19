@@ -26,7 +26,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.PointF;
 import android.graphics.RectF;
 import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
@@ -47,11 +46,16 @@ import android.view.WindowManager;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.widget.Button;
-import android.widget.Toast;
 
 public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClickListener, MediaRecorder.OnInfoListener, 
 															MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
 { 
+	public static final float DEFAULT_X_SIZE = 100;
+	public static final float DEFAULT_Y_SIZE = 100;
+	
+	private float calcDefaultXSize = DEFAULT_X_SIZE;
+	private float calcDefaultYSize = DEFAULT_Y_SIZE;
+
 	public static final int PLAY = 0;
 	public static final int SHARE = 1;
 	
@@ -59,13 +63,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
 	
 	public static final String DEFAULT_COLOR = "black";
-	
-	public static final float DEFAULT_X_SIZE = 100;
-	public static final float DEFAULT_Y_SIZE = 100;
-	
-	private float calcDefaultXSize = DEFAULT_X_SIZE;
-	private float calcDefaultYSize = DEFAULT_Y_SIZE;
-	
+		
 	private MediaRecorder recorder;
 	private SurfaceHolder holder;
 	private CamcorderProfile camcorderProfile;
@@ -228,7 +226,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 	
-		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_LOW);
+		camcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
 	
 		setContentView(R.layout.main);
 		
@@ -658,46 +656,4 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 
 		return handled; // indicate event was handled	
 	}	
-	
-	class ObscureRegion {
-		// Number of fingers
-		public int numFingers = 1;
-		
-		// Finger 1
-		public float sx = 0;
-		public float sy = 0;
-		
-		// Finger 2
-		public float ex = 0;
-		public float ey = 0;
-		
-		// Time in ms
-		public long time = 0;
-		
-		public ObscureRegion(long _time, float _sx, float _sy, float _ex, float _ey) {
-			time = _time;
-			numFingers = 2;
-			sx = _sx;
-			sy = _sy;
-			ex = _ex;
-			ey = _ey;
-
-			Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
-		}
-		
-		public ObscureRegion(long _time, float _sx, float _sy) {
-			time = _time;
-			numFingers = 1;
-			sx = _sx - calcDefaultXSize/2;
-			sy = _sy - calcDefaultXSize/2;
-			ex = sx + calcDefaultXSize;
-			ey = sy + calcDefaultXSize;
-			
-			Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
-		}
-		
-		public RectF getRectF() {
-			return new RectF(sx, sy, ex, ey);
-		}
-	}
 }
