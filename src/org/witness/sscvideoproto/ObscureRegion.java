@@ -52,4 +52,10 @@ public class ObscureRegion {
 	public RectF getRectF() {
 		return new RectF(sx, sy, ex, ey);
 	}
+	
+	public RectF getBounds ()
+	{
+		return getRectF();
+	}
+
 }
