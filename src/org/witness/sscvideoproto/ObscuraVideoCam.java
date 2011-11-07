@@ -579,8 +579,6 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		
 	}
 	
-	//PrintWriter redactSettingsPrintWriter
-	
 	int currentNumFingers = 0;
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
