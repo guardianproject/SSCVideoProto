@@ -27,6 +27,9 @@ public class ObscureRegion {
 	// Time in ms
 	public long time = 0;
 	
+	public long startTime = 0;
+	public long endTime = 0;
+	
 	public ObscureRegion(long _time, float _sx, float _sy, float _ex, float _ey) {
 		time = _time;
 		numFingers = 2;
@@ -56,6 +59,13 @@ public class ObscureRegion {
 	public RectF getBounds ()
 	{
 		return getRectF();
+	}
+	
+	public boolean existsInTime(long time) {
+		if (time < endTime && time >= startTime) {
+			return true;
+		}
+		return false;
 	}
 
 }
