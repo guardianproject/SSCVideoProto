@@ -58,7 +58,7 @@ public class VideoEditor extends Activity implements
 	ImageButton inPointImageButton;
 	ImageButton outPointImageButton;
 	
-	private Vector obscureRegions = new Vector();
+	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -305,10 +305,21 @@ public class VideoEditor extends Activity implements
 	   public void run() {
 		   if (mediaPlayer != null && mediaPlayer.isPlaying()) {
 			   progressBar.setProgress((int)(((float)mediaPlayer.getCurrentPosition()/(float)mediaPlayer.getDuration())*100));
+			   updateRegionDisplay();
 		   }   
-		   mHandler.postDelayed(this, 1000);
+		   mHandler.postDelayed(this, 100);
 	   }
 	};		
+	
+	private void updateRegionDisplay() {
+		for (ObscureRegion region : obscureRegions)
+		{
+			if (region.existsInTime(mediaPlayer.getCurrentPosition()))
+			{
+				// Draw this region
+			}
+		}
+	}
 	
 	/* TOUCH EVENTS FROM ImageEditor.java 
 	ImageRegion currRegion = null;
@@ -549,22 +560,42 @@ public class VideoEditor extends Activity implements
 	public static final int DRAG = 1;
 	int mode = NONE;
 
+	public boolean findRegion(MotionEvent event) 
+	{
+		for (ObscureRegion region : obscureRegions)
+		{
+			if (region.getBounds().contains(event.getX(),event.getY()))
+			{
+				currRegion = region;
+				return true;
+			}
+		}			
+		return false;
+	}
+	
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
+		boolean handled = false;
+		
 		if (v == progressBar) {
+			// It's the progress bar/scrubber
 			Log.v(LOGTAG,"" + event.getX() + " " + event.getX()/progressBar.getWidth());
 			mediaPlayer.seekTo((int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
-			return false;
 		}
 		else if (currRegion != null && (mode == DRAG || currRegion.getBounds().contains(event.getX(), event.getY())))		
 		{
-			boolean handled = false;
-			return handled;
+			// They are interacting with the active region
+			handled = true;
 		}
+		else if (findRegion(event)) 
+		{
+			// They touched an existing region
+			handled = true;
+		} 
 		else 
 		{
-			boolean handled = false;
-
+			// Create a new region
+			
 			float x = event.getX()/(float)currentDisplay.getWidth() * videoWidth;
 			float y = event.getY()/(float)currentDisplay.getHeight() * videoHeight;
 
@@ -599,8 +630,8 @@ public class VideoEditor extends Activity implements
 					break;
 			}
 
-			return handled; // indicate event was handled	
 		}		
+		return handled; // indicate event was handled	
 	}
 	
 	@Override
