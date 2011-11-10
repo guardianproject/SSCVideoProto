@@ -30,6 +30,12 @@ public class ObscureRegion {
 		sy = _sy;
 		ex = _ex;
 		ey = _ey;
+		
+		if (sx < 0) { 
+			sx = 0;
+		} else if (sy < 0) {
+			sy = 0;
+		}
 
 		Log.v(LOGTAG,"new region: " + startTime + " " + " " + endTime + " " + sx + " " + sy + " " + ex + " " + ey);
 	}
