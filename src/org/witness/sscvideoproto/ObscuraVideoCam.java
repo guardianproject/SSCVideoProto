@@ -49,28 +49,20 @@ import android.widget.Button;
 
 public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClickListener, MediaRecorder.OnInfoListener, 
 															MediaRecorder.OnErrorListener, SurfaceHolder.Callback, Camera.PreviewCallback 
-{ 
-	public static final float DEFAULT_X_SIZE = 100;
-	public static final float DEFAULT_Y_SIZE = 100;
-	
-	private float calcDefaultXSize = DEFAULT_X_SIZE;
-	private float calcDefaultYSize = DEFAULT_Y_SIZE;
-
+{ 	
 	public static final int PLAY = 0;
 	public static final int SHARE = 1;
 	
 	public static final String LOGTAG = "OBSCURAVIDEOCAM";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
-	
-	public static final String DEFAULT_COLOR = "black";
-		
+			
 	private MediaRecorder recorder;
 	private SurfaceHolder holder;
 	private CamcorderProfile camcorderProfile;
 	private Camera camera;	
 	
 	// Vector of ObscureRegion objects
-	private Vector obscureRegions = new Vector();
+	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
 	
 	boolean recording = false;
 	boolean usecamera = true;
@@ -88,113 +80,24 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	File savePath;
 	
 	File redactSettingsFile;
-	PrintWriter redactSettingsPrintWriter;
 	
 	File overlayImage; 
-
-	String[] libraryAssets = {"ffmpeg"};
 
 	ProgressDialog progressDialog;
 	AlertDialog choiceDialog;
 	
+	FFMPEGWrapper ffmpeg;
+	
 	Display display; 
 	int screenWidth;
-	int screenHeight;					
+	int screenHeight;
 	
-	private void moveLibraryAssets() {
-		
-        Process process = null;
+	float calcDefaultXSize;
+	float calcDefaultYSize;
 
-        for (int i = 0; i < libraryAssets.length; i++) {
-			try {
-				InputStream ffmpegInputStream = this.getAssets().open(libraryAssets[i]);
-		        FileMover fm = new FileMover(ffmpegInputStream,"/data/data/"+PACKAGENAME+"/" + libraryAssets[i]);
-		        fm.moveIt();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-	        try {
-	        	String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/" + libraryAssets[i]};
-	        	process = new ProcessBuilder(args).start();        	
-	        	try {
-					process.waitFor();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-	        	process.destroy();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-        }
-        
-        try {
-        	//String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/ffmpeg"};
-        	String[] args = {"chmod", "777", "/data/data/"+PACKAGENAME+"/"};
-        	process = new ProcessBuilder(args).start();        	
-        	try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-        	process.destroy();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		/*
-    	// Get Some Help
-    	String[] ffmpegHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-?"};
-    	execProcess(ffmpegHelp);
-    	
-    	String[] ffmpegMoreHelp = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-filters"};
-    	execProcess(ffmpegMoreHelp);
-
-    	String[] ffmpegMoreHelpAgain = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-codecs"};
-    	execProcess(ffmpegMoreHelpAgain);
-    	
-    	String[] ffmpegMoreHelpAgainMore = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-formats"};
-    	execProcess(ffmpegMoreHelpAgainMore);
-    	// Finish Getting Help
-    	 */
-	}
-	
-	private void execProcess(String[] command) {
-        try {
-	
-	    	StringBuilder commandSb = new StringBuilder();
-	    	for (int i = 0; i < command.length; i++) {
-	    		if (i > 0) {
-	    			commandSb.append(" ");
-	    		}	    		
-	    		commandSb.append(command[i]);
-	    	}
-	    	Log.v(LOGTAG, commandSb.toString());
-	    	Process prrocess = new ProcessBuilder(command).redirectErrorStream(true).start();         	
-			
-			OutputStream outputStream = prrocess.getOutputStream();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(prrocess.getInputStream()));
-	
-			String line;
-			
-			Log.v(LOGTAG,"***Starting Command***");
-			while ((line = reader.readLine()) != null)
-			{
-				Log.v(LOGTAG,"***"+line+"***");
-			}
-			Log.v(LOGTAG,"***Ending Command***");
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
 	private void createCleanSavePath() {
 		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
-		
-		createOverlayImage();
 		
 		Log.v(LOGTAG,"savePath:" + savePath.getPath());
 		if (savePath.exists()) {
@@ -214,12 +117,6 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-
-		File libraryAssetsDirectory = new File("/data/data/" + PACKAGENAME);
-		if (!libraryAssetsDirectory.exists()) {
-			libraryAssetsDirectory.mkdirs();
-		}
-		moveLibraryAssets();
 		
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -242,7 +139,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		
 		display = getWindowManager().getDefaultDisplay(); 
 		screenWidth = display.getWidth();
-		screenHeight = display.getHeight();					
+		screenHeight = display.getHeight();		
+		
+		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
+		ffmpeg = new FFMPEGWrapper(this.getBaseContext());
 	}
 	
 	private void prepareRecorder() {
@@ -259,8 +159,8 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	
 		recorder.setProfile(camcorderProfile);
 		
-		calcDefaultXSize = (float)camcorderProfile.videoFrameWidth/(float)screenWidth * (float)DEFAULT_X_SIZE;
-		calcDefaultYSize = (float)camcorderProfile.videoFrameHeight/(float)screenHeight * (float)DEFAULT_Y_SIZE;
+		calcDefaultXSize = (float)camcorderProfile.videoFrameWidth/(float)screenWidth * (float)ObscureRegion.DEFAULT_X_SIZE;
+		calcDefaultYSize = (float)camcorderProfile.videoFrameHeight/(float)screenHeight * (float)ObscureRegion.DEFAULT_Y_SIZE;
 		
 		createCleanSavePath();
 		
@@ -307,33 +207,6 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			// recorder.release();
 			recording = false;
 			Log.v(LOGTAG, "Recording Stopped");
-
-			// Write out the finger data
-			try {
-				//Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt"
-				redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
-				
-				FileWriter redactSettingsFileWriter = new FileWriter(redactSettingsFile);
-				redactSettingsPrintWriter = new PrintWriter(redactSettingsFileWriter);
-				
-				for (int i = 0; i < obscureRegions.size(); i++) {
-					ObscureRegion or = (ObscureRegion)obscureRegions.get(i);
-					float ftime = (float)or.time/(float)1000;
-					float etime = ftime + 1;
-					if (i < obscureRegions.size() - 1) {
-						etime = (float)((ObscureRegion)obscureRegions.get(i+1)).time/(float)1000;
-					}
-					//left, right, top, bottom
-					String orString = "" + ftime + ","+etime+"," + (int)or.sx + "," + (int)or.ex + "," + (int)or.sy + "," + (int)or.ey + "," + DEFAULT_COLOR;
-					Log.v(LOGTAG,"Writing: " + orString);
-					redactSettingsPrintWriter.println(orString);
-				}
-				redactSettingsPrintWriter.flush();
-				redactSettingsPrintWriter.close();
-
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
 			
 			progressDialog = ProgressDialog.show(ObscuraVideoCam.this, "", 
                     "Processing. Please wait...", true);
@@ -453,67 +326,10 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
 			wl.acquire();
 	        
-			Process ffmpegProcess = null;
-	        try {
-	        		        					
-	        	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
-	        	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
-	        	
-	        	String widthxheight = camcorderProfile.videoFrameWidth + "x" + camcorderProfile.videoFrameHeight;
-	        	
-	        	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
-	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
-    					"-vcodec", "libx264", "-b", "1000k", "-s", widthxheight, "-r", ""+camcorderProfile.videoFrameRate,
-    					"-vf" , "redact=" + Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt",
-    					"-an",
-    					"-f", "mp4", savePath.getPath()+"/output.mp4"};
+	    	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
+	    	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
 
-	        	// Need to make sure this will create a legitimate mp4 file
-	        	//"-acodec", "ac3", "-ac", "1", "-ar", "16000", "-ab", "32k",
-	        	//"-acodec", "copy",
-
-	        	/*
-	        	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
-	        					"-vcodec", "libx264", "-b", "3000k", "-vpre", "baseline", "-s", "720x480", "-r", "30",
-	        					//"-vf", "drawbox=10:20:200:60:red@0.5",
-	        					"-vf" , "\"movie="+ overlayImage.getPath() +" [logo];[in][logo] overlay=0:0 [out]\"",
-	        					"-acodec", "copy",
-	        					"-f", "mp4", savePath.getPath()+"/output.mp4"};
-	        	*/
-	        	
-	        	StringBuilder ffmpegCommandSb = new StringBuilder();
-	        	for (int i = 0; i < ffmpegCommand.length; i++) {
-	        		if (i > 0) {
-	        			ffmpegCommandSb.append(" ");
-	        		}
-	        		ffmpegCommandSb.append(ffmpegCommand[i]);
-	        	}
-	        	Log.v(LOGTAG, ffmpegCommandSb.toString());
-				ffmpegProcess = new ProcessBuilder(ffmpegCommand).redirectErrorStream(true).start();         	
-				
-				OutputStream ffmpegOutStream = ffmpegProcess.getOutputStream();
-				BufferedReader reader = new BufferedReader(new InputStreamReader(ffmpegProcess.getInputStream()));
-
-				String line;
-				
-				int count = 0;
-				Log.v(LOGTAG,"***Starting FFMPEG***");
-				while ((line = reader.readLine()) != null)
-				{
-					Log.v(LOGTAG,"***"+line+"***");
-					count++;
-		            publishProgress(count);
-				}
-				Log.v(LOGTAG,"***Ending FFMPEG***");
-	
-	    
-	        } catch (IOException e) {
-	        	e.printStackTrace();
-	        }
-	        
-	        if (ffmpegProcess != null) {
-	        	ffmpegProcess.destroy();        
-	        }
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, savePath, camcorderProfile);
 	        
 	        wl.release();
 		     
@@ -579,58 +395,50 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		
 	}
 	
-	int currentNumFingers = 0;
+	long startTime = 0;
+	float startX = 0;
+	float startY = 0;
+	
 	public boolean onTouch(View v, MotionEvent event) {
+		
 		boolean handled = false;
 
 		float x = event.getX()/(float)screenWidth * (float)camcorderProfile.videoFrameWidth;
 		float y = event.getY()/(float)screenHeight * (float)camcorderProfile.videoFrameHeight;
 
 		switch (event.getAction() & MotionEvent.ACTION_MASK) {
+		
 			case MotionEvent.ACTION_DOWN:
 				// Single Finger down
-				currentNumFingers = 1;
 				
 				if (recording) {
+					startTime = SystemClock.uptimeMillis() - recordStartTime;
+					startX = x;
+					startY = y;
 					
-					ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,x);
-					obscureRegions.add(singleFingerRegion);
+					//ObscureRegion singleFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,y);
+					//obscureRegions.add(singleFingerRegion);
 				}
+
 				handled = true;
 				
 				break;
 				
 			case MotionEvent.ACTION_POINTER_DOWN:
-				// Two Fingers down
-				currentNumFingers = 2;
-				
-				if (recording) {
-					ObscureRegion twoFingerRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
-					obscureRegions.add(twoFingerRegion);
-				}
-				handled = true;
 				
 				break;
 				
 			case MotionEvent.ACTION_UP:
 				// Single Finger Up
-				currentNumFingers = 0;
 				
-				if (recording) {
-					ObscureRegion singleFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,y,x,y);
+				if (recording) {					
+					ObscureRegion singleFingerUpRegion = new ObscureRegion(startTime, SystemClock.uptimeMillis() - recordStartTime,x,y);
 					obscureRegions.add(singleFingerUpRegion);
 				}
 				
 				break;
 				
 			case MotionEvent.ACTION_POINTER_UP:
-				// Multiple Finger Up
-				currentNumFingers = 0;
-				
-				if (recording) {
-					ObscureRegion twoFingerUpRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,y,x,y);
-					obscureRegions.add(twoFingerUpRegion);
-				}
 				
 				break;
 				
@@ -638,13 +446,12 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 				// Calculate distance moved
 				
 				if (recording) {
-					if (currentNumFingers == 2) {
-						ObscureRegion twoFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,event.getX(0),event.getY(0),event.getX(1),event.getY(1));
-						obscureRegions.add(twoFingerMoveRegion);
-					} else if (currentNumFingers == 1) {
-						ObscureRegion oneFingerMoveRegion = new ObscureRegion(SystemClock.uptimeMillis() - recordStartTime,x,x);
-						obscureRegions.add(oneFingerMoveRegion);
-					}
+					ObscureRegion oneFingerMoveRegion = new ObscureRegion(startTime, SystemClock.uptimeMillis() - recordStartTime,x,y);
+					obscureRegions.add(oneFingerMoveRegion);
+					
+					startTime = SystemClock.uptimeMillis() - recordStartTime;
+					startX = x;
+					startY = y;
 				}
 				
 				handled = true;
