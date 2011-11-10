@@ -7,57 +7,50 @@ public class ObscureRegion {
 
 	public static final String LOGTAG = "OBSCUREREGION";
 
+	public static final String DEFAULT_COLOR = "black";
+
+	public static final long DEFAULT_LENGTH = 10; // Seconds
+	
 	public static final float DEFAULT_X_SIZE = 100;
 	public static final float DEFAULT_Y_SIZE = 100;
-	
-	private float calcDefaultXSize = DEFAULT_X_SIZE;
-	private float calcDefaultYSize = DEFAULT_Y_SIZE;
-
-	// Number of fingers
-	public int numFingers = 1;
-	
-	// Finger 1
+		
 	public float sx = 0;
 	public float sy = 0;
 	
-	// Finger 2
 	public float ex = 0;
 	public float ey = 0;
-	
-	// Time in ms
-	public long time = 0;
-	
+		
 	public long startTime = 0;
 	public long endTime = 0;
 	
-	public ObscureRegion(long _time, float _sx, float _sy, float _ex, float _ey) {
-		time = _time;
-		numFingers = 2;
+	public ObscureRegion(long _startTime, long _endTime, float _sx, float _sy, float _ex, float _ey) {
+		startTime = _startTime;
+		endTime = _endTime;
 		sx = _sx;
 		sy = _sy;
 		ex = _ex;
 		ey = _ey;
 
-		Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
+		Log.v(LOGTAG,"new region: " + startTime + " " + " " + endTime + " " + sx + " " + sy + " " + ex + " " + ey);
 	}
-	
-	public ObscureRegion(long _time, float _sx, float _sy) {
-		time = _time;
-		numFingers = 1;
-		sx = _sx - calcDefaultXSize/2;
-		sy = _sy - calcDefaultYSize/2;
-		ex = sx + calcDefaultXSize;
-		ey = sy + calcDefaultYSize;
-		
-		Log.v(LOGTAG,"new region: " + time + " " + sx + " " + sy + " " + ex + " " + ey);
+
+	public ObscureRegion(long _startTime, float _sx, float _sy, float _ex, float _ey) {
+		this(_startTime, _startTime+DEFAULT_LENGTH, _sx, _sy, _ex, _ey);
+	}
+
+	public ObscureRegion(long _startTime, long _endTime, float _sx, float _sy) {
+		this(_startTime, _endTime, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
+	}
+
+	public ObscureRegion(long _startTime, float _sx, float _sy) {
+		this(_startTime, _startTime+DEFAULT_LENGTH, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
 	}
 	
 	public RectF getRectF() {
 		return new RectF(sx, sy, ex, ey);
 	}
 	
-	public RectF getBounds ()
-	{
+	public RectF getBounds() {
 		return getRectF();
 	}
 	
@@ -68,4 +61,8 @@ public class ObscureRegion {
 		return false;
 	}
 
+	public String toString() {
+		//left, right, top, bottom
+		return "" + startTime + "," + endTime + "," + (int)sx + "," + (int)ex + "," + (int)sy + "," + (int)ey + "," + DEFAULT_COLOR;
+	}
 }
