@@ -1,15 +1,25 @@
 package org.witness.sscvideoproto;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Vector;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.util.Log;
 import android.media.MediaPlayer.OnBufferingUpdateListener;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -20,6 +30,8 @@ import android.media.MediaPlayer.OnSeekCompleteListener;
 import android.media.MediaPlayer.OnVideoSizeChangedListener;
 import android.net.Uri;
 import android.view.Display;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -39,9 +51,14 @@ public class VideoEditor extends Activity implements
 						MediaController.MediaPlayerControl, OnTouchListener, OnClickListener {
 
 	public static final String LOGTAG = "VIDEOEDITOR";
-	
+	public static final String PACKAGENAME = "org.witness.sscvideoproto";
+
+	public static final int SHARE = 1;
+
+	ProgressDialog progressDialog;
+
 	Uri originalVideoUri;
-	Uri savedVideoUri;
+	File recordingFile;
 	
 	Display currentDisplay;
 
@@ -60,12 +77,19 @@ public class VideoEditor extends Activity implements
 	
 	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
 	
+	ProcessVideo processVideo;
+
+	FFMPEGWrapper ffmpeg;
+	File redactSettingsFile;
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
 		setContentView(R.layout.videoeditor);
 			
+		createCleanSavePath();
+
 		// Passed in from ObscuraApp
 		originalVideoUri = getIntent().getData();
 
@@ -116,7 +140,10 @@ public class VideoEditor extends Activity implements
 		
 		currentDisplay = getWindowManager().getDefaultDisplay();
 		
-		mHandler.postDelayed(updatePlayProgress, 1000);		
+		mHandler.postDelayed(updatePlayProgress, 100);		
+		
+		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
+		ffmpeg = new FFMPEGWrapper(this.getBaseContext());		
 	}
 	
 	@Override
@@ -573,6 +600,10 @@ public class VideoEditor extends Activity implements
 		return false;
 	}
 	
+	long startTime = 0;
+	float startX = 0;
+	float startY = 0;
+
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
@@ -604,8 +635,10 @@ public class VideoEditor extends Activity implements
 					// Single Finger down
 					currentNumFingers = 1;
 					
-					ObscureRegion singleFingerRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,x);
-					obscureRegions.add(singleFingerRegion);
+					startTime = mediaPlayer.getCurrentPosition();
+					startX = x;
+					startY = y;
+					
 					handled = true;
 					
 					break;
@@ -614,16 +647,24 @@ public class VideoEditor extends Activity implements
 					// Single Finger Up
 					currentNumFingers = 0;
 					
-						ObscureRegion singleFingerUpRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,y,x,y);
+					if (mediaPlayer.getCurrentPosition() > startTime) {
+						ObscureRegion singleFingerUpRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
 						obscureRegions.add(singleFingerUpRegion);
-					
+					}
+									
 					break;
 										
 				case MotionEvent.ACTION_MOVE:
 					// Calculate distance moved
 					
-					ObscureRegion oneFingerMoveRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,x);
-					obscureRegions.add(oneFingerMoveRegion);
+					if (mediaPlayer.getCurrentPosition() > startTime) {
+						ObscureRegion oneFingerMoveRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
+						obscureRegions.add(oneFingerMoveRegion);
+					}
+					
+					startTime = mediaPlayer.getCurrentPosition();
+					startX = x;
+					startY = y;
 					
 					handled = true;
 
@@ -656,4 +697,132 @@ public class VideoEditor extends Activity implements
 
     	return originalVideoFilePath;
     }
+	
+	File savePath;
+	private void createCleanSavePath() {
+		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
+		savePath.mkdirs();
+		
+		Log.v(LOGTAG,"savePath:" + savePath.getPath());
+		if (savePath.exists()) {
+			Log.v(LOGTAG,"savePath exists!");
+		} else {
+			Log.v(LOGTAG,"savePath DOES NOT exist!");
+		}
+		
+		File[] existingFiles = savePath.listFiles();
+		if (existingFiles != null) {
+			for (int i = 0; i < existingFiles.length; i++) {
+				existingFiles[i].delete();
+			}
+		}
+		
+		try {
+			recordingFile = File.createTempFile("output", ".mp4", savePath);
+			Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	public final static int PLAY = 1;
+	public final static int STOP = 2;
+	public final static int PROCESS = 3;
+	
+	@Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+		
+		String processString = "Process Video";
+		
+    	MenuItem processMenuItem = menu.add(Menu.NONE, PROCESS, Menu.NONE, processString);
+    	processMenuItem.setIcon(R.drawable.ic_menu_about);
+    	
+    	return true;
+	}
+	
+    public boolean onOptionsItemSelected(MenuItem item) {	
+        switch (item.getItemId()) {
+        	case PROCESS:
+        		processVideo();
+        		return true;
+        		
+        	default:
+        		
+        		return false;
+        }
+    }
+
+    private void processVideo() {
+		// Convert to video
+		processVideo = new ProcessVideo();
+		processVideo.execute();
+    }
+    
+	private class ProcessVideo extends AsyncTask<Void, Integer, Void> {
+		@Override
+		protected Void doInBackground(Void... params) {	
+
+			PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
+			wl.acquire();
+	        
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, savePath, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), 15);
+	        
+	        wl.release();
+		     
+	        return null;
+		}
+		
+		@Override
+	    protected void onProgressUpdate(Integer... progress) {
+			Log.v(LOGTAG,"Progress: " + progress[0]);
+	    }
+		
+		@Override
+	    protected void onPostExecute(Void result) {
+	    	 Log.v(LOGTAG,"***ON POST EXECUTE***");
+	    	 showPlayShareDialog();
+	     }
+	}
+	
+	private void showPlayShareDialog() {
+		progressDialog.cancel();
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(VideoEditor.this);
+		builder.setMessage("Play or Share?")
+			.setCancelable(true)
+			.setPositiveButton("Play", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int id) {
+					playVideo();
+				}
+			})
+			.setNegativeButton("Share", new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int id) {
+	            	shareVideo();
+	            }
+		    });
+		AlertDialog alert = builder.create();
+		alert.show();
+	}
+	
+	private void playVideo() {
+    	Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
+   	 	Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
+   	 	intent.setDataAndType(data, "video/mp4"); 
+   	 	startActivityForResult(intent,PLAY);
+	}
+	
+	private void shareVideo() {
+    	Intent share = new Intent(Intent.ACTION_SEND);
+    	share.setType("video/mp4");
+    	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(savePath.getPath()+"/output.mp4"));
+    	startActivityForResult(Intent.createChooser(share, "Share Video"),SHARE);     
+	}
+	
+	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		super.onActivityResult(requestCode, resultCode, intent);
+		showPlayShareDialog();
+	}	
 }
