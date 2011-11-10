@@ -63,6 +63,6 @@ public class ObscureRegion {
 
 	public String toString() {
 		//left, right, top, bottom
-		return "" + startTime + "," + endTime + "," + (int)sx + "," + (int)ex + "," + (int)sy + "," + (int)ey + "," + DEFAULT_COLOR;
+		return "" + (float)startTime/(float)1000 + "," + (float)endTime/(float)1000 + "," + (int)sx + "," + (int)ex + "," + (int)sy + "," + (int)ey + "," + DEFAULT_COLOR;
 	}
 }
