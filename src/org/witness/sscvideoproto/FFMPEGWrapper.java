@@ -86,14 +86,14 @@ public class FFMPEGWrapper {
 		}
 	}
 	
-	public void processVideo(File redactSettingsFile, Vector<ObscureRegion> obscureRegions, File recordingFile, File savePath, CamcorderProfile camcorderProfile) {
+	public void processVideo(File redactSettingsFile, Vector<ObscureRegion> obscureRegions, File recordingFile, File savePath, int width, int height, int frameRate) {
 		writeRedactData(redactSettingsFile, obscureRegions);
 		    	
-    	String widthxheight = camcorderProfile.videoFrameWidth + "x" + camcorderProfile.videoFrameHeight;
+    	String widthxheight = width + "x" + height;
     	
     	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
     	String[] ffmpegCommand = {"/data/data/"+PACKAGENAME+"/ffmpeg", "-v", "10", "-y", "-i", recordingFile.getPath(), 
-				"-vcodec", "libx264", "-b", "1000k", "-s", widthxheight, "-r", ""+camcorderProfile.videoFrameRate,
+				"-vcodec", "libx264", "-b", "1000k", "-s", widthxheight, "-r", ""+frameRate,
 				"-vf" , "redact=" + Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt",
 				"-an",
 				"-f", "mp4", savePath.getPath()+"/output.mp4"};
