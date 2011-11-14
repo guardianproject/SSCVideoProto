@@ -58,6 +58,9 @@ public class VideoEditor extends Activity implements
 	ProgressDialog progressDialog;
 
 	Uri originalVideoUri;
+	
+	File savePath;
+	File saveFile;
 	File recordingFile;
 	
 	Display currentDisplay;
@@ -92,6 +95,7 @@ public class VideoEditor extends Activity implements
 
 		// Passed in from ObscuraApp
 		originalVideoUri = getIntent().getData();
+		recordingFile = new File(pullPathFromUri(originalVideoUri));
 
 		surfaceView = (SurfaceView) this.findViewById(R.id.SurfaceView);
 		surfaceView.setOnTouchListener(this);
@@ -698,7 +702,6 @@ public class VideoEditor extends Activity implements
     	return originalVideoFilePath;
     }
 	
-	File savePath;
 	private void createCleanSavePath() {
 		savePath = new File(Environment.getExternalStorageDirectory().getPath() + "/"+PACKAGENAME+"/");
 		savePath.mkdirs();
@@ -710,20 +713,20 @@ public class VideoEditor extends Activity implements
 			Log.v(LOGTAG,"savePath DOES NOT exist!");
 		}
 		
+		try {
+			saveFile = File.createTempFile("output", ".mp4", savePath);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		/*
 		File[] existingFiles = savePath.listFiles();
 		if (existingFiles != null) {
 			for (int i = 0; i < existingFiles.length; i++) {
 				existingFiles[i].delete();
 			}
 		}
-		
-		try {
-			recordingFile = File.createTempFile("output", ".mp4", savePath);
-			Log.v(LOGTAG,"Recording at: " + recordingFile.getAbsolutePath());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		*/
 	}
 	
 	
@@ -768,7 +771,7 @@ public class VideoEditor extends Activity implements
 			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
 			wl.acquire();
 	        
-			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, savePath, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), 15);
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), 15);
 	        
 	        wl.release();
 		     
@@ -809,7 +812,7 @@ public class VideoEditor extends Activity implements
 	
 	private void playVideo() {
     	Intent intent = new Intent(android.content.Intent.ACTION_VIEW); 
-   	 	Uri data = Uri.parse(savePath.getPath()+"/output.mp4");
+   	 	Uri data = Uri.parse(saveFile.getPath());
    	 	intent.setDataAndType(data, "video/mp4"); 
    	 	startActivityForResult(intent,PLAY);
 	}
@@ -817,7 +820,7 @@ public class VideoEditor extends Activity implements
 	private void shareVideo() {
     	Intent share = new Intent(Intent.ACTION_SEND);
     	share.setType("video/mp4");
-    	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(savePath.getPath()+"/output.mp4"));
+    	share.putExtra(Intent.EXTRA_STREAM, Uri.parse(saveFile.getPath()));
     	startActivityForResult(Intent.createChooser(share, "Share Video"),SHARE);     
 	}
 	
