@@ -76,8 +76,9 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 		
 	ProcessVideo processVideo;
 	
-	File recordingFile;
 	File savePath;
+	File recordingFile;
+	File saveFile;
 	
 	File redactSettingsFile;
 	
@@ -106,12 +107,20 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 			Log.v(LOGTAG,"savePath DOES NOT exist!");
 		}
 		
+		try {
+			saveFile = File.createTempFile("output", ".mp4", savePath);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		/*
 		File[] existingFiles = savePath.listFiles();
 		if (existingFiles != null) {
 			for (int i = 0; i < existingFiles.length; i++) {
 				existingFiles[i].delete();
 			}
 		}
+		*/
 	}
 	
 	@Override
@@ -329,7 +338,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	    	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
 	    	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
 
-			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, savePath, camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight,camcorderProfile.videoFrameRate);
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight,camcorderProfile.videoFrameRate);
 	        
 	        wl.release();
 		     
