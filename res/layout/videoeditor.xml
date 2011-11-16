@@ -8,6 +8,11 @@
 	  	android:layout_height="wrap_content" 
   		android:layout_width="wrap_content">
   	</SurfaceView>
+	<ImageView 
+		android:id="@+id/VideoEditorImageView" 
+		android:layout_width="fill_parent" 
+		android:layout_height="fill_parent">
+	</ImageView>
   	<LinearLayout 
   		android:id="@+id/OuterLinearLayout" 
   		android:layout_width="fill_parent" 
