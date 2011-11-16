@@ -11,6 +11,16 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
+import android.graphics.Paint.Style;
+import android.graphics.PorterDuff.Mode;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -40,6 +50,7 @@ import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.MediaController;
 import android.widget.ProgressBar;
@@ -69,6 +80,11 @@ public class VideoEditor extends Activity implements
 	SurfaceHolder surfaceHolder;
 	MediaPlayer mediaPlayer;	
 	
+	ImageView regionsView;
+	Bitmap obscuredBmp;
+    Canvas obscuredCanvas;
+	Paint obscuredPaint;
+	
 	ProgressBar progressBar;
 
 	int videoWidth = 0;
@@ -79,17 +95,22 @@ public class VideoEditor extends Activity implements
 	ImageButton outPointImageButton;
 	
 	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
+	private ObscureRegion tempRegion;
 	
 	ProcessVideo processVideo;
 
 	FFMPEGWrapper ffmpeg;
 	File redactSettingsFile;
 	
+	private Handler mHandler = new Handler();
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
 		setContentView(R.layout.videoeditor);
+		
+		regionsView = (ImageView) this.findViewById(R.id.VideoEditorImageView);
 			
 		createCleanSavePath();
 
@@ -147,7 +168,7 @@ public class VideoEditor extends Activity implements
 		mHandler.postDelayed(updatePlayProgress, 100);		
 		
 		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
-		ffmpeg = new FFMPEGWrapper(this.getBaseContext());		
+		ffmpeg = new FFMPEGWrapper(this.getBaseContext());	
 	}
 	
 	@Override
@@ -331,7 +352,6 @@ public class VideoEditor extends Activity implements
 		mediaPlayer.start();
 	}
 	
-	private Handler mHandler = new Handler();
 	private Runnable updatePlayProgress = new Runnable() {
 	   public void run() {
 		   if (mediaPlayer != null && mediaPlayer.isPlaying()) {
@@ -343,13 +363,47 @@ public class VideoEditor extends Activity implements
 	};		
 	
 	private void updateRegionDisplay() {
-		for (ObscureRegion region : obscureRegions)
-		{
-			if (region.existsInTime(mediaPlayer.getCurrentPosition()))
-			{
+
+		validateRegionView();
+		clearRects();
+				
+		for (ObscureRegion region:obscureRegions) {
+			if (region.existsInTime(mediaPlayer.getCurrentPosition())) {
 				// Draw this region
+				Log.v(LOGTAG,mediaPlayer.getCurrentPosition() + " Drawing a region: " + region.getBounds().left + " " + region.getBounds().top + " " + region.getBounds().right + " " + region.getBounds().bottom);
+	            displayRect(region.getBounds());
 			}
 		}
+		
+		if (tempRegion != null) {
+			displayRect(tempRegion.getBounds());
+		}
+		
+		regionsView.invalidate();
+	}
+	
+	private void validateRegionView() {
+		if (obscuredBmp == null) {
+			Log.v(LOGTAG,"obscuredBmp is null, creating it now");
+			obscuredBmp = Bitmap.createBitmap(regionsView.getWidth(), regionsView.getHeight(), Bitmap.Config.ARGB_8888);
+			obscuredCanvas = new Canvas(obscuredBmp); 
+			obscuredPaint = new Paint();   
+            obscuredPaint.setColor(Color.WHITE);
+		    obscuredPaint.setStyle(Style.STROKE);
+		    obscuredPaint.setStrokeWidth(10f);
+
+		    regionsView.setImageBitmap(obscuredBmp);			
+		}
+	}
+	
+	private void displayRect(RectF regionRect) {
+	    obscuredCanvas.drawRect(regionRect, obscuredPaint);
+	}
+	
+	private void clearRects() {
+		Paint clearPaint = new Paint();
+		clearPaint.setXfermode(new PorterDuffXfermode(Mode.CLEAR));
+		obscuredCanvas.drawPaint(clearPaint);
 	}
 	
 	/* TOUCH EVENTS FROM ImageEditor.java 
@@ -643,6 +697,8 @@ public class VideoEditor extends Activity implements
 					startX = x;
 					startY = y;
 					
+					tempRegion = new ObscureRegion(0,0,x,y);
+					
 					handled = true;
 					
 					break;
@@ -655,6 +711,8 @@ public class VideoEditor extends Activity implements
 						ObscureRegion singleFingerUpRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
 						obscureRegions.add(singleFingerUpRegion);
 					}
+					
+					tempRegion = null;
 									
 					break;
 										
@@ -664,8 +722,10 @@ public class VideoEditor extends Activity implements
 					if (mediaPlayer.getCurrentPosition() > startTime) {
 						ObscureRegion oneFingerMoveRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
 						obscureRegions.add(oneFingerMoveRegion);
+						tempRegion = null;
 					}
 					
+					tempRegion = new ObscureRegion(0,0,x,y);
 					startTime = mediaPlayer.getCurrentPosition();
 					startX = x;
 					startY = y;
