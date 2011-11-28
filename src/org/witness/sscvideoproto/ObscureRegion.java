@@ -52,6 +52,17 @@ public class ObscureRegion {
 		this(_startTime, _startTime+DEFAULT_LENGTH, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
 	}
 	
+	public void moveRegion(float _sx, float _sy) {
+		this.moveRegion(_sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
+	}
+	
+	public void moveRegion(float _sx, float _sy, float _ex, float _ey) {
+		sx = _sx;
+		sy = _sy;
+		ex = _ex;
+		ey = _ey;
+	}
+	
 	public RectF getRectF() {
 		return new RectF(sx, sy, ex, ey);
 	}
