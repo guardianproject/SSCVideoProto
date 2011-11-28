@@ -14,8 +14,6 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ImageFormat;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -26,10 +24,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.util.Log;
 import android.media.MediaPlayer.OnBufferingUpdateListener;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -164,9 +160,7 @@ public class VideoEditor extends Activity implements
 		outPointImageButton.setOnClickListener(this);
 		
 		currentDisplay = getWindowManager().getDefaultDisplay();
-		
-		mHandler.postDelayed(updatePlayProgress, 100);		
-		
+				
 		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
 		ffmpeg = new FFMPEGWrapper(this.getBaseContext());	
 	}
@@ -221,11 +215,10 @@ public class VideoEditor extends Activity implements
 			Log.v(LOGTAG, "Media Info, Media Info Unknown " + extra);
 		} else if (whatInfo == MediaPlayer.MEDIA_INFO_VIDEO_TRACK_LAGGING) {
 			Log.v(LOGTAG, "MediaInfo, Media Info Video Track Lagging " + extra);
-		} /*
-		 * Android version 2.0 or higher else if (whatInfo ==
-		 * MediaPlayer.MEDIA_INFO_METADATA_UPDATE) { Log.v(LOGTAG,
-		 * "MediaInfo, Media Info Metadata Update " + extra); }
-		 */
+		} else if (whatInfo == MediaPlayer.MEDIA_INFO_METADATA_UPDATE) { 
+			Log.v(LOGTAG, "MediaInfo, Media Info Metadata Update " + extra); 
+		}
+		
 		return false;
 	}
 
@@ -255,6 +248,8 @@ public class VideoEditor extends Activity implements
 		}
 
 		surfaceView.setLayoutParams(new FrameLayout.LayoutParams(videoWidth, videoHeight));
+		
+		mHandler.postDelayed(updatePlayProgress, 100);		
 	}
 
 	@Override
@@ -354,23 +349,27 @@ public class VideoEditor extends Activity implements
 	
 	private Runnable updatePlayProgress = new Runnable() {
 	   public void run() {
-		   if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-			   progressBar.setProgress((int)(((float)mediaPlayer.getCurrentPosition()/(float)mediaPlayer.getDuration())*100));
+		   if (mediaPlayer != null) {
+			   if (mediaPlayer.isPlaying()) {
+				   progressBar.setProgress((int)(((float)mediaPlayer.getCurrentPosition()/(float)mediaPlayer.getDuration())*100));
+			   }   
 			   updateRegionDisplay();
-		   }   
+		   }
 		   mHandler.postDelayed(this, 100);
 	   }
 	};		
 	
 	private void updateRegionDisplay() {
 
+		//Log.v(LOGTAG,"Position: " + mediaPlayer.getCurrentPosition());
+		
 		validateRegionView();
 		clearRects();
 				
 		for (ObscureRegion region:obscureRegions) {
 			if (region.existsInTime(mediaPlayer.getCurrentPosition())) {
 				// Draw this region
-				Log.v(LOGTAG,mediaPlayer.getCurrentPosition() + " Drawing a region: " + region.getBounds().left + " " + region.getBounds().top + " " + region.getBounds().right + " " + region.getBounds().bottom);
+				//Log.v(LOGTAG,mediaPlayer.getCurrentPosition() + " Drawing a region: " + region.getBounds().left + " " + region.getBounds().top + " " + region.getBounds().right + " " + region.getBounds().bottom);
 	            displayRect(region.getBounds());
 			}
 		}
@@ -658,10 +657,14 @@ public class VideoEditor extends Activity implements
 		return false;
 	}
 	
+	/*
 	long startTime = 0;
 	float startX = 0;
 	float startY = 0;
-
+	*/
+	
+	boolean showMenu = false;
+	
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
 		boolean handled = false;
@@ -669,7 +672,13 @@ public class VideoEditor extends Activity implements
 		if (v == progressBar) {
 			// It's the progress bar/scrubber
 			Log.v(LOGTAG,"" + event.getX() + " " + event.getX()/progressBar.getWidth());
+			Log.v(LOGTAG,"Seeking To: " + (int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
 			mediaPlayer.seekTo((int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
+			Log.v(LOGTAG,"MediaPlayer Position: " + mediaPlayer.getCurrentPosition());
+			// Attempt to get the player to update it's view
+			if (!mediaPlayer.isPlaying()) {
+				mediaPlayer.pause();
+			}
 		}
 		else if (currRegion != null && (mode == DRAG || currRegion.getBounds().contains(event.getX(), event.getY())))		
 		{
@@ -679,12 +688,13 @@ public class VideoEditor extends Activity implements
 		else if (findRegion(event)) 
 		{
 			// They touched an existing region
+			Log.v(LOGTAG,"Touched an existing region");
+			
 			handled = true;
 		} 
 		else 
 		{
-			// Create a new region
-			
+			// New Region Related
 			float x = event.getX()/(float)currentDisplay.getWidth() * videoWidth;
 			float y = event.getY()/(float)currentDisplay.getHeight() * videoHeight;
 
@@ -693,13 +703,20 @@ public class VideoEditor extends Activity implements
 					// Single Finger down
 					currentNumFingers = 1;
 					
-					startTime = mediaPlayer.getCurrentPosition();
-					startX = x;
-					startY = y;
+					// If we have a region in creation/editing and we touch within it
+					if (tempRegion != null && tempRegion.getRectF().contains(x, y)) {
+
+						// Should display menu, unless they move
+						showMenu = true;
+						
+						Log.v(LOGTAG,"Touched tempRegion");
+												
+					} else {
 					
-					tempRegion = new ObscureRegion(0,0,x,y);
-					
-					handled = true;
+						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,y);
+						handled = true;
+
+					}
 					
 					break;
 					
@@ -707,34 +724,36 @@ public class VideoEditor extends Activity implements
 					// Single Finger Up
 					currentNumFingers = 0;
 					
-					if (mediaPlayer.getCurrentPosition() > startTime) {
-						ObscureRegion singleFingerUpRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
-						obscureRegions.add(singleFingerUpRegion);
+					if (showMenu) {
+						Log.v(LOGTAG,"Touch Up: Show Menu - Really finalizing tempRegion");
+						// Should show the menu, stopping region for now
+						tempRegion.endTime = mediaPlayer.getCurrentPosition();
+						obscureRegions.add(tempRegion);
+						tempRegion = null;
 					}
 					
-					tempRegion = null;
-									
 					break;
 										
 				case MotionEvent.ACTION_MOVE:
 					// Calculate distance moved
+					showMenu = false;
 					
-					if (mediaPlayer.getCurrentPosition() > startTime) {
-						ObscureRegion oneFingerMoveRegion = new ObscureRegion(startTime, mediaPlayer.getCurrentPosition(), x, y);
-						obscureRegions.add(oneFingerMoveRegion);
+					if (tempRegion != null && mediaPlayer.getCurrentPosition() > tempRegion.startTime) {
+						Log.v(LOGTAG,"Moving tempRegion");
+						tempRegion.endTime = mediaPlayer.getCurrentPosition();
+						obscureRegions.add(tempRegion);
 						tempRegion = null;
+						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,y);
+
+					} else if (tempRegion != null) {
+						Log.v(LOGTAG,"Moving tempRegion start time");
+						// We are moving it without changing time, just change start time
+						tempRegion.moveRegion(x, y);
 					}
 					
-					tempRegion = new ObscureRegion(0,0,x,y);
-					startTime = mediaPlayer.getCurrentPosition();
-					startX = x;
-					startY = y;
-					
 					handled = true;
-
 					break;
 			}
-
 		}		
 		return handled; // indicate event was handled	
 	}
@@ -778,15 +797,6 @@ public class VideoEditor extends Activity implements
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		/*
-		File[] existingFiles = savePath.listFiles();
-		if (existingFiles != null) {
-			for (int i = 0; i < existingFiles.length; i++) {
-				existingFiles[i].delete();
-			}
-		}
-		*/
 	}
 	
 	
@@ -818,6 +828,9 @@ public class VideoEditor extends Activity implements
     }
 
     private void processVideo() {
+    	
+    	progressDialog = ProgressDialog.show(this, "", "Processing. Please wait...", true);
+    	
 		// Convert to video
 		processVideo = new ProcessVideo();
 		processVideo.execute();
