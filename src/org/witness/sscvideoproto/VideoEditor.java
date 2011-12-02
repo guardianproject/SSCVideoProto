@@ -82,6 +82,8 @@ public class VideoEditor extends Activity implements
 	Paint obscuredPaint;
 	
 	ProgressBar progressBar;
+	
+	SeekBar seekBar;
 
 	int videoWidth = 0;
 	int videoHeight = 0;
@@ -162,7 +164,11 @@ public class VideoEditor extends Activity implements
 		currentDisplay = getWindowManager().getDefaultDisplay();
 				
 		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
-		ffmpeg = new FFMPEGWrapper(this.getBaseContext());	
+		ffmpeg = new FFMPEGWrapper(this.getBaseContext());
+		
+		seekBar = (SeekBar) this.findViewById(R.id.CustomSeekBar);
+		RegionBar rb = new RegionBar(this);
+		seekBar.addView(rb);
 	}
 	
 	@Override
