@@ -56,6 +56,11 @@
 		  				android:layout_marginLeft="100px">
 		  			</ImageButton>
 				</FrameLayout>
+				<org.witness.sscvideoproto.SeekBar
+					android:id="@+id/CustomSeekBar"
+					android:layout_height="30dp" 
+					android:layout_width="fill_parent">
+				</org.witness.sscvideoproto.SeekBar>
 				<SeekBar 
 					android:id="@+id/ProgressBar" 
 					android:layout_height="30dp" 
