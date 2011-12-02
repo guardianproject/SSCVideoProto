@@ -374,7 +374,7 @@ public class VideoEditor extends Activity implements
 			}
 		}
 		
-		if (tempRegion != null) {
+		if (tempRegion != null && tempRegion.existsInTime(mediaPlayer.getCurrentPosition())) {
 			displayRect(tempRegion.getBounds());
 		}
 		
@@ -642,19 +642,21 @@ public class VideoEditor extends Activity implements
 	
 	public static final int NONE = 0;
 	public static final int DRAG = 1;
-	int mode = NONE;
+	//int mode = NONE;
 
-	public boolean findRegion(MotionEvent event) 
+	public ObscureRegion findRegion(MotionEvent event) 
 	{
+		ObscureRegion returnRegion = null;
+		
 		for (ObscureRegion region : obscureRegions)
 		{
 			if (region.getBounds().contains(event.getX(),event.getY()))
 			{
-				currRegion = region;
-				return true;
+				returnRegion = region;
+				break;
 			}
 		}			
-		return false;
+		return returnRegion;
 	}
 	
 	/*
@@ -662,13 +664,14 @@ public class VideoEditor extends Activity implements
 	float startX = 0;
 	float startY = 0;
 	*/
-	
+
 	boolean showMenu = false;
-	
+
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
-		boolean handled = false;
 		
+		boolean handled = false;
+
 		if (v == progressBar) {
 			// It's the progress bar/scrubber
 			Log.v(LOGTAG,"" + event.getX() + " " + event.getX()/progressBar.getWidth());
@@ -680,19 +683,7 @@ public class VideoEditor extends Activity implements
 				mediaPlayer.pause();
 			}
 		}
-		else if (currRegion != null && (mode == DRAG || currRegion.getBounds().contains(event.getX(), event.getY())))		
-		{
-			// They are interacting with the active region
-			handled = true;
-		}
-		else if (findRegion(event)) 
-		{
-			// They touched an existing region
-			Log.v(LOGTAG,"Touched an existing region");
-			
-			handled = true;
-		} 
-		else 
+		else
 		{
 			// New Region Related
 			float x = event.getX()/(float)currentDisplay.getWidth() * videoWidth;
@@ -710,14 +701,27 @@ public class VideoEditor extends Activity implements
 						showMenu = true;
 						
 						Log.v(LOGTAG,"Touched tempRegion");
-												
+																		
 					} else {
 					
-						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,y);
-						handled = true;
-
+						showMenu = false;
+						
+						tempRegion = findRegion(event);
+						
+						if (tempRegion != null)
+						{
+							// They are interacting with the active region
+							Log.v(LOGTAG,"Touched an existing region");
+						}
+						else 
+						{
+							tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
+							Log.v(LOGTAG,"Creating a new tempRegion");
+						}
 					}
-					
+
+					handled = true;
+
 					break;
 					
 				case MotionEvent.ACTION_UP:
@@ -725,11 +729,15 @@ public class VideoEditor extends Activity implements
 					currentNumFingers = 0;
 					
 					if (showMenu) {
+						
 						Log.v(LOGTAG,"Touch Up: Show Menu - Really finalizing tempRegion");
+						
 						// Should show the menu, stopping region for now
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
 						tempRegion = null;
+						
+						showMenu = false;
 					}
 					
 					break;
@@ -739,11 +747,13 @@ public class VideoEditor extends Activity implements
 					showMenu = false;
 					
 					if (tempRegion != null && mediaPlayer.getCurrentPosition() > tempRegion.startTime) {
-						Log.v(LOGTAG,"Moving tempRegion");
+						Log.v(LOGTAG,"Moving a tempRegion");
+						
+						long previousEndTime = tempRegion.endTime;
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
 						tempRegion = null;
-						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),x,y);
+						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
 
 					} else if (tempRegion != null) {
 						Log.v(LOGTAG,"Moving tempRegion start time");
@@ -754,7 +764,7 @@ public class VideoEditor extends Activity implements
 					handled = true;
 					break;
 			}
-		}		
+		}
 		return handled; // indicate event was handled	
 	}
 	
