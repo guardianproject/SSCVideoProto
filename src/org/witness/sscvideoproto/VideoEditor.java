@@ -12,6 +12,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -62,6 +63,8 @@ public class VideoEditor extends Activity implements
 
 	public static final int SHARE = 1;
 
+    private final static float REGION_CORNER_SIZE = 26;
+	
 	ProgressDialog progressDialog;
 
 	Uri originalVideoUri;
@@ -80,6 +83,12 @@ public class VideoEditor extends Activity implements
 	Bitmap obscuredBmp;
     Canvas obscuredCanvas;
 	Paint obscuredPaint;
+	Paint selectedPaint;
+	
+	Bitmap bitmapCornerUL;
+	Bitmap bitmapCornerUR;
+	Bitmap bitmapCornerLL;
+	Bitmap bitmapCornerLR;
 	
 	ProgressBar progressBar;
 	
@@ -169,6 +178,21 @@ public class VideoEditor extends Activity implements
 		seekBar = (SeekBar) this.findViewById(R.id.CustomSeekBar);
 		RegionBar rb = new RegionBar(this);
 		seekBar.addView(rb);
+		
+		obscuredPaint = new Paint();   
+        obscuredPaint.setColor(Color.WHITE);
+	    obscuredPaint.setStyle(Style.STROKE);
+	    obscuredPaint.setStrokeWidth(10f);
+	    
+	    selectedPaint = new Paint();
+	    selectedPaint.setColor(Color.GREEN);
+	    selectedPaint.setStyle(Style.STROKE);
+	    selectedPaint.setStrokeWidth(10f);
+	    
+		bitmapCornerUL = BitmapFactory.decodeResource(getResources(), R.drawable.edit_region_corner_ul);
+		bitmapCornerUR = BitmapFactory.decodeResource(getResources(), R.drawable.edit_region_corner_ur);
+		bitmapCornerLL = BitmapFactory.decodeResource(getResources(), R.drawable.edit_region_corner_ll);
+		bitmapCornerLR = BitmapFactory.decodeResource(getResources(), R.drawable.edit_region_corner_lr);
 	}
 	
 	@Override
@@ -376,12 +400,15 @@ public class VideoEditor extends Activity implements
 			if (region.existsInTime(mediaPlayer.getCurrentPosition())) {
 				// Draw this region
 				//Log.v(LOGTAG,mediaPlayer.getCurrentPosition() + " Drawing a region: " + region.getBounds().left + " " + region.getBounds().top + " " + region.getBounds().right + " " + region.getBounds().bottom);
-	            displayRect(region.getBounds());
+				if (region != tempRegion) {
+					displayRegion(region,false);
+				}
 			}
 		}
 		
 		if (tempRegion != null && tempRegion.existsInTime(mediaPlayer.getCurrentPosition())) {
-			displayRect(tempRegion.getBounds());
+			displayRegion(tempRegion,true);
+			//displayRect(tempRegion.getBounds(), selectedPaint);
 		}
 		
 		regionsView.invalidate();
@@ -392,17 +419,32 @@ public class VideoEditor extends Activity implements
 			Log.v(LOGTAG,"obscuredBmp is null, creating it now");
 			obscuredBmp = Bitmap.createBitmap(regionsView.getWidth(), regionsView.getHeight(), Bitmap.Config.ARGB_8888);
 			obscuredCanvas = new Canvas(obscuredBmp); 
-			obscuredPaint = new Paint();   
-            obscuredPaint.setColor(Color.WHITE);
-		    obscuredPaint.setStyle(Style.STROKE);
-		    obscuredPaint.setStrokeWidth(10f);
-
 		    regionsView.setImageBitmap(obscuredBmp);			
 		}
 	}
 	
-	private void displayRect(RectF regionRect) {
-	    obscuredCanvas.drawRect(regionRect, obscuredPaint);
+	private void displayRegion(ObscureRegion region, boolean selected) {
+					    	    	
+    	if (selected) {
+
+    		RectF paintingRect = new RectF();
+        	paintingRect.set(region.getBounds());
+        	paintingRect.inset(10,10);
+        	
+        	obscuredPaint.setStrokeWidth(10f);
+    		obscuredPaint.setColor(Color.GREEN);
+        	
+    		obscuredCanvas.drawRect(paintingRect, obscuredPaint);
+    		
+        	obscuredCanvas.drawBitmap(bitmapCornerUL, paintingRect.left-REGION_CORNER_SIZE, paintingRect.top-REGION_CORNER_SIZE, obscuredPaint);
+    		obscuredCanvas.drawBitmap(bitmapCornerLL, paintingRect.left-REGION_CORNER_SIZE, paintingRect.bottom-(REGION_CORNER_SIZE/2), obscuredPaint);
+    		obscuredCanvas.drawBitmap(bitmapCornerUR, paintingRect.right-(REGION_CORNER_SIZE/2), paintingRect.top-REGION_CORNER_SIZE, obscuredPaint);
+    		obscuredCanvas.drawBitmap(bitmapCornerLR, paintingRect.right-(REGION_CORNER_SIZE/2), paintingRect.bottom-(REGION_CORNER_SIZE/2), obscuredPaint);
+    	    
+    	} else {
+    		obscuredPaint.setColor(Color.BLACK);
+    		obscuredCanvas.drawRect(region.getBounds(), obscuredPaint);
+    	}
 	}
 	
 	private void clearRects() {
@@ -642,9 +684,8 @@ public class VideoEditor extends Activity implements
 	}
 	*/	
 
-	ObscureRegion currRegion = null;
-
 	int currentNumFingers = 0;
+	int regionCornerMode = 0;
 	
 	public static final int NONE = 0;
 	public static final int DRAG = 1;
@@ -686,6 +727,7 @@ public class VideoEditor extends Activity implements
 			Log.v(LOGTAG,"MediaPlayer Position: " + mediaPlayer.getCurrentPosition());
 			// Attempt to get the player to update it's view
 			if (!mediaPlayer.isPlaying()) {
+				mediaPlayer.start();
 				mediaPlayer.pause();
 			}
 		}
@@ -706,6 +748,9 @@ public class VideoEditor extends Activity implements
 						// Should display menu, unless they move
 						showMenu = true;
 						
+						// Are we on a corner?
+						regionCornerMode = getRegionCornerMode(tempRegion, x, y);
+						
 						Log.v(LOGTAG,"Touched tempRegion");
 																		
 					} else {
@@ -716,6 +761,12 @@ public class VideoEditor extends Activity implements
 						
 						if (tempRegion != null)
 						{
+							// Display menu unless they move
+							showMenu = true;
+							
+							// Are we on a corner?
+							regionCornerMode = getRegionCornerMode(tempRegion, x, y);
+							
 							// They are interacting with the active region
 							Log.v(LOGTAG,"Touched an existing region");
 						}
@@ -758,13 +809,45 @@ public class VideoEditor extends Activity implements
 						long previousEndTime = tempRegion.endTime;
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
+						ObscureRegion lastRegion = tempRegion;
 						tempRegion = null;
-						tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
-
+						
+						if (regionCornerMode != CORNER_NONE) {
+				
+							//moveRegion(float _sx, float _sy, float _ex, float _ey)
+							// Create new region with moved coordinates
+							if (regionCornerMode == CORNER_UPPER_LEFT) {
+								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
+							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
+								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
+							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
+								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
+							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
+								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
+							}
+						} else {		
+							// No Corner
+							tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
+						}
 					} else if (tempRegion != null) {
 						Log.v(LOGTAG,"Moving tempRegion start time");
-						// We are moving it without changing time, just change start time
-						tempRegion.moveRegion(x, y);
+						
+						if (regionCornerMode != CORNER_NONE) {
+							
+							// Just move region, we are at begin time
+							if (regionCornerMode == CORNER_UPPER_LEFT) {
+								tempRegion.moveRegion(x,y,tempRegion.ex,tempRegion.ey);
+							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
+								tempRegion.moveRegion(x,tempRegion.sy,tempRegion.ex,y);
+							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
+								tempRegion.moveRegion(tempRegion.sx,y,x,tempRegion.ey);
+							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
+								tempRegion.moveRegion(tempRegion.sx,tempRegion.sy,x,y);
+							}
+						} else {		
+							// No Corner
+							tempRegion.moveRegion(x, y);
+						}
 					}
 					
 					handled = true;
@@ -773,6 +856,45 @@ public class VideoEditor extends Activity implements
 		}
 		return handled; // indicate event was handled	
 	}
+	
+
+	public static final int CORNER_NONE = 0;
+	public static final int CORNER_UPPER_LEFT = 1;
+	public static final int CORNER_LOWER_LEFT = 2;
+	public static final int CORNER_UPPER_RIGHT = 3;
+	public static final int CORNER_LOWER_RIGHT = 4;
+	
+	public int getRegionCornerMode(ObscureRegion region, float x, float y)
+	{    			
+    	if (Math.abs(region.getBounds().left-x)<REGION_CORNER_SIZE
+    			&& Math.abs(region.getBounds().top-y)<REGION_CORNER_SIZE)
+    	{
+    		Log.v(LOGTAG,"CORNER_UPPER_LEFT");
+    		return CORNER_UPPER_LEFT;
+    	}
+    	else if (Math.abs(region.getBounds().left-x)<REGION_CORNER_SIZE
+    			&& Math.abs(region.getBounds().bottom-y)<REGION_CORNER_SIZE)
+    	{
+    		Log.v(LOGTAG,"CORNER_LOWER_LEFT");
+    		return CORNER_LOWER_LEFT;
+		}
+    	else if (Math.abs(region.getBounds().right-x)<REGION_CORNER_SIZE
+    			&& Math.abs(region.getBounds().top-y)<REGION_CORNER_SIZE)
+    	{
+        		Log.v(LOGTAG,"CORNER_UPPER_RIGHT");
+    			return CORNER_UPPER_RIGHT;
+		}
+    	else if (Math.abs(region.getBounds().right-x)<REGION_CORNER_SIZE
+        			&& Math.abs(region.getBounds().bottom-y)<REGION_CORNER_SIZE)
+    	{
+    		Log.v(LOGTAG,"CORNER_LOWER_RIGHT");
+    		return CORNER_LOWER_RIGHT;
+    	}
+    	
+		Log.v(LOGTAG,"CORNER_NONE");    	
+    	return CORNER_NONE;
+	}
+	
 	
 	@Override
 	public void onClick(View v) {
