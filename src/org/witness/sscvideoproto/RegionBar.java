@@ -42,7 +42,7 @@ public class RegionBar extends View {
         
         canvas.drawText("TEST", 100, 100, paint);
         
-        Log.v(LOGTAG,"Just drew " + width + " " + height);
+        //Log.v(LOGTAG,"Just drew " + width + " " + height);
     }
 
     @Override
