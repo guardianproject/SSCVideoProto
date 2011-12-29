@@ -5,6 +5,25 @@ import android.util.Log;
 
 public class ObscureRegion {
 
+	/*
+	 * Thinking about whether or not a region should contain multiple start/end times
+	 * realizing that doing this would make editing a real pita
+	 * Of course, it would make displaying be a 1000x better though.
+	class PositionTime {
+
+		int sx = 0; 
+		int sy = 0; 
+		int ex = 0;
+		int ey = 0;
+		long startTime = 0; 
+		long endTime = 0;
+		
+		PositionTime(int _sx, int _sy, int _ex, int _ey, long _startTime, long _endTime) {
+			
+		}
+	}
+	*/
+	
 	public static final String LOGTAG = "OBSCUREREGION";
 
 	public static final String DEFAULT_COLOR = "black";
