@@ -4,14 +4,22 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.util.Log;
 import android.view.View;
 
 public class RegionBar extends View {
+	
+	public static final String LOGTAG = "REGIONBAR";
 	
 	public static final int COLOR_SELECTED = Color.YELLOW;
 	public static final int COLOR_NOT_SELECTED = Color.BLUE;
 	
 	int backgroundColor = COLOR_NOT_SELECTED;
+	
+	int width = 0;
+	int height = 0;
+	
+	ObscureRegion or = null;
 	
 	public RegionBar(Context context) {
 		super(context);
@@ -28,12 +36,20 @@ public class RegionBar extends View {
         paint.setColor(0xFF668800);
         paint.setStyle(Paint.Style.FILL);
 
-        canvas.drawText("TEEEST", 100, 100, paint);
+        //canvas.drawRect(left, top, right, bottom, paint);
+        //(float)startTime/(float)1000 + "," + (float)endTime/(float)1000
+        //canvas.drawRect(10,10,width-10,height-10,paint);
+        
+        canvas.drawText("TEST", 100, 100, paint);
+        
+        Log.v(LOGTAG,"Just drew " + width + " " + height);
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        this.setMeasuredDimension(150,200);     
-    }
-	
+    	width = widthMeasureSpec;
+    	height = heightMeasureSpec;
+    	
+        this.setMeasuredDimension(widthMeasureSpec,heightMeasureSpec);     
+    }	
 }
