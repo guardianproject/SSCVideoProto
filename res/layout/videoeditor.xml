@@ -38,24 +38,11 @@
   				android:orientation="vertical"
   				android:gravity="center"
   				android:layout_margin="20dp">
-  				<FrameLayout
-  					android:id="@+id/InOutPointFrameLayout"
-  					android:layout_width="fill_parent"
-					android:layout_height="fill_parent">
-					<ImageButton 
-  						android:layout_width="wrap_content" 
-  						android:id="@+id/InPointImageButton" 
-  						android:src="@drawable/icon" 
-  						android:layout_height="wrap_content">
-  					</ImageButton>
-  					<ImageButton 
-		  				android:layout_width="wrap_content" 
-		  				android:id="@+id/OutPointImageButton" 
-		  				android:src="@drawable/icon" 
-		  				android:layout_height="wrap_content"
-		  				android:layout_marginLeft="100px">
-		  			</ImageButton>
-				</FrameLayout>
+  				<org.witness.sscvideoproto.SeekBarWithTwoThumb
+  					android:id="@+id/SeekBarWithTwoThumb"
+					android:layout_height="30dp" 
+					android:layout_width="fill_parent">
+				</org.witness.sscvideoproto.SeekBarWithTwoThumb>
 				<org.witness.sscvideoproto.SeekBar
 					android:id="@+id/CustomSeekBar"
 					android:layout_height="30dp" 
