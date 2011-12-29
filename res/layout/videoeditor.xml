@@ -38,26 +38,21 @@
   				android:orientation="vertical"
   				android:gravity="center"
   				android:layout_margin="20dp">
-  				<org.witness.sscvideoproto.SeekBarWithTwoThumb
-  					android:id="@+id/SeekBarWithTwoThumb"
-					android:layout_height="30dp" 
-					android:layout_width="fill_parent">
-				</org.witness.sscvideoproto.SeekBarWithTwoThumb>
-				<org.witness.sscvideoproto.SeekBar
-					android:id="@+id/CustomSeekBar"
-					android:layout_height="30dp" 
-					android:layout_width="fill_parent">
-				</org.witness.sscvideoproto.SeekBar>
-				<SeekBar 
-					android:id="@+id/ProgressBar" 
+				<org.witness.sscvideoproto.InOutPlayheadSeekBar 
+					android:id="@+id/InOutPlayheadSeekBar" 
 					android:layout_height="30dp" 
 					android:layout_width="fill_parent" 
 					android:gravity="center" 
 					android:indeterminate="false" 
 					android:indeterminateOnly="false" 
 					android:secondaryProgress="0" 
-					android:progressDrawable="@android:drawable/progress_horizontal" >
-				</SeekBar>
+					android:progressDrawable="@android:drawable/progress_horizontal">
+				</org.witness.sscvideoproto.InOutPlayheadSeekBar>
+				<org.witness.sscvideoproto.RegionBarArea
+					android:id="@+id/RegionBarArea"
+					android:layout_height="30dp" 
+					android:layout_width="fill_parent">
+				</org.witness.sscvideoproto.RegionBarArea>
 			</LinearLayout> 
 		</LinearLayout>		
   	</LinearLayout>
