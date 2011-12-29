@@ -51,8 +51,9 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.MediaController;
 import android.widget.ProgressBar;
+import android.widget.LinearLayout.LayoutParams;
 
-public class VideoEditor extends Activity implements 
+public class VideoEditor extends Activity implements
 						OnCompletionListener, OnErrorListener, OnInfoListener,
 						OnBufferingUpdateListener, OnPreparedListener, OnSeekCompleteListener,
 						OnVideoSizeChangedListener, SurfaceHolder.Callback,
@@ -165,10 +166,12 @@ public class VideoEditor extends Activity implements
 		playPauseButton = (ImageButton) this.findViewById(R.id.PlayPauseImageButton);
 		playPauseButton.setOnClickListener(this);
 		
+		/*
 		inPointImageButton = (ImageButton) this.findViewById(R.id.InPointImageButton);
 		inPointImageButton.setOnClickListener(this);
 		outPointImageButton = (ImageButton) this.findViewById(R.id.OutPointImageButton);
 		outPointImageButton.setOnClickListener(this);
+		*/
 		
 		currentDisplay = getWindowManager().getDefaultDisplay();
 				
@@ -176,8 +179,6 @@ public class VideoEditor extends Activity implements
 		ffmpeg = new FFMPEGWrapper(this.getBaseContext());
 		
 		seekBar = (SeekBar) this.findViewById(R.id.CustomSeekBar);
-		RegionBar rb = new RegionBar(this);
-		seekBar.addView(rb);
 		
 		obscuredPaint = new Paint();   
         obscuredPaint.setColor(Color.WHITE);
@@ -412,6 +413,7 @@ public class VideoEditor extends Activity implements
 		}
 		
 		regionsView.invalidate();
+		//seekBar.invalidate();
 	}
 	
 	private void validateRegionView() {
@@ -792,6 +794,14 @@ public class VideoEditor extends Activity implements
 						// Should show the menu, stopping region for now
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
+						
+						//RegionBar rb = new RegionBar(this);
+						SeekBarWithTwoThumb rb = new SeekBarWithTwoThumb(this);
+						LayoutParams llp = new LayoutParams(100, 50);
+						rb.setLayoutParams(llp);
+						//rb.or = tempRegion;
+						seekBar.addView(rb);
+
 						tempRegion = null;
 						
 						showMenu = false;
@@ -809,6 +819,14 @@ public class VideoEditor extends Activity implements
 						long previousEndTime = tempRegion.endTime;
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
+
+						//RegionBar rb = new RegionBar(this);
+						SeekBarWithTwoThumb rb = new SeekBarWithTwoThumb(this);
+						LayoutParams llp = new LayoutParams(100, 50);
+						rb.setLayoutParams(llp);
+						//rb.or = tempRegion;
+						seekBar.addView(rb);
+						
 						ObscureRegion lastRegion = tempRegion;
 						tempRegion = null;
 						
