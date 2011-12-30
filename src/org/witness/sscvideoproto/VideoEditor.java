@@ -2,8 +2,9 @@
  * 
  * To Do:
  * 
- * Handles on SeekBar - two thumb scrubber will be for current region (tempRegion)
- * RegionBarArea/RegionBar will be graphical display of region tracks, no editing, just selecting
+ * Handles on SeekBar - Not quite right
+ * Editing region, not quite right
+ * RegionBarArea will be graphical display of region tracks, no editing, just selecting
  * 
  */
 
@@ -173,17 +174,16 @@ public class VideoEditor extends Activity implements
 		progressBar.setThumbsInactive();
 		progressBar.setOnTouchListener(this);
 
-
 		playPauseButton = (ImageButton) this.findViewById(R.id.PlayPauseImageButton);
 		playPauseButton.setOnClickListener(this);
 		
-	
 		currentDisplay = getWindowManager().getDefaultDisplay();
 				
 		redactSettingsFile = new File(Environment.getExternalStorageDirectory().getPath()+"/"+PACKAGENAME+"/redact_unsort.txt");
 		ffmpeg = new FFMPEGWrapper(this.getBaseContext());
 		
 		regionBarArea = (RegionBarArea) this.findViewById(R.id.RegionBarArea);
+		regionBarArea.obscureRegions = obscureRegions;
 		
 		obscuredPaint = new Paint();   
         obscuredPaint.setColor(Color.WHITE);
@@ -554,11 +554,14 @@ public class VideoEditor extends Activity implements
 						}
 						else 
 						{
-							tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
+							
+							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
 							Log.v(LOGTAG,"Creating a new tempRegion");
 							
+							Log.v(LOGTAG,"startTime: " + tempRegion.startTime + " duration: " + mediaPlayer.getDuration() + " math startTime/duration*100: " + (int)((float)tempRegion.startTime/(float)mediaPlayer.getDuration()*100));
+							
 							// Show in and out points
-							progressBar.setThumbsActive((int)(tempRegion.startTime/mediaPlayer.getDuration()*100), (int)(tempRegion.endTime/mediaPlayer.getDuration()*100));
+							progressBar.setThumbsActive((int)((double)tempRegion.startTime/(double)mediaPlayer.getDuration()*100), (int)((double)tempRegion.endTime/(double)mediaPlayer.getDuration()*100));
 
 						}
 					}
@@ -579,12 +582,6 @@ public class VideoEditor extends Activity implements
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
 						
-						RegionBar rb = new RegionBar(this);
-						rb.or = tempRegion;
-						LayoutParams rbllp = new LayoutParams(100, 50);
-						rb.setLayoutParams(rbllp);
-						regionBarArea.addView(rb);
-
 						tempRegion = null;
 						
 						// Hide in and out points
@@ -605,12 +602,6 @@ public class VideoEditor extends Activity implements
 						long previousEndTime = tempRegion.endTime;
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
 						obscureRegions.add(tempRegion);
-
-						RegionBar rb = new RegionBar(this);
-						rb.or = tempRegion;
-						LayoutParams rbllp = new LayoutParams(100, 50);
-						rb.setLayoutParams(rbllp);
-						regionBarArea.addView(rb);
 						
 						ObscureRegion lastRegion = tempRegion;
 						tempRegion = null;
@@ -620,17 +611,17 @@ public class VideoEditor extends Activity implements
 							//moveRegion(float _sx, float _sy, float _ex, float _ey)
 							// Create new region with moved coordinates
 							if (regionCornerMode == CORNER_UPPER_LEFT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
+								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
 							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
+								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
 							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
+								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
 							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
+								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
 							}
 						} else {		
 							// No Corner
-							tempRegion = new ObscureRegion(mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
+							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
 						}
 						
 						if (tempRegion != null) {
@@ -856,7 +847,8 @@ public class VideoEditor extends Activity implements
 	@Override
 	public void inOutValuesChanged(int thumbInValue, int thumbOutValue) {
 		if (tempRegion != null) {
-			//asdf
+			tempRegion.startTime = thumbInValue;
+			tempRegion.endTime = thumbOutValue;
 		}
 	}	
 }
