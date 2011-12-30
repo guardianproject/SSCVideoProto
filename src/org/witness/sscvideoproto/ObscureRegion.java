@@ -42,7 +42,10 @@ public class ObscureRegion {
 	public long startTime = 0;
 	public long endTime = 0;
 	
-	public ObscureRegion(long _startTime, long _endTime, float _sx, float _sy, float _ex, float _ey) {
+	public long mediaDuration = 0;
+	
+	public ObscureRegion(long _duration, long _startTime, long _endTime, float _sx, float _sy, float _ex, float _ey) {
+		mediaDuration = _duration;
 		startTime = _startTime;
 		endTime = _endTime;
 		sx = _sx;
@@ -59,16 +62,16 @@ public class ObscureRegion {
 		Log.v(LOGTAG,"new region: " + startTime + " " + " " + endTime + " " + sx + " " + sy + " " + ex + " " + ey);
 	}
 
-	public ObscureRegion(long _startTime, float _sx, float _sy, float _ex, float _ey) {
-		this(_startTime, _startTime+DEFAULT_LENGTH, _sx, _sy, _ex, _ey);
+	public ObscureRegion(long _duration, long _startTime, float _sx, float _sy, float _ex, float _ey) {
+		this(_duration, _startTime, _startTime+DEFAULT_LENGTH, _sx, _sy, _ex, _ey);
 	}
 
-	public ObscureRegion(long _startTime, long _endTime, float _sx, float _sy) {
-		this(_startTime, _endTime, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
+	public ObscureRegion(long _duration, long _startTime, long _endTime, float _sx, float _sy) {
+		this(_duration, _startTime, _endTime, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
 	}
 
-	public ObscureRegion(long _startTime, float _sx, float _sy) {
-		this(_startTime, _startTime+DEFAULT_LENGTH, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
+	public ObscureRegion(long _duration, long _startTime, float _sx, float _sy) {
+		this(_duration, _startTime, _startTime+DEFAULT_LENGTH, _sx - DEFAULT_X_SIZE/2, _sy - DEFAULT_Y_SIZE/2, _sx + DEFAULT_X_SIZE/2, _sy + DEFAULT_Y_SIZE/2);
 	}
 	
 	public void moveRegion(float _sx, float _sy) {
