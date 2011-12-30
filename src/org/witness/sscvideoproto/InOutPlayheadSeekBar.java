@@ -42,6 +42,7 @@ public class InOutPlayheadSeekBar extends SeekBar {
 	public boolean thumbsActive = false;
 	
 	public void setThumbsActive(int inThumbValue, int outThumbValue) {
+		Log.v(LOGTAG,"in value: " + inThumbValue + " out value: " + outThumbValue);
 		thumbsActive = true;
 		setThumbsValue(inThumbValue, outThumbValue);
 		invalidate();
@@ -145,21 +146,25 @@ public class InOutPlayheadSeekBar extends SeekBar {
 		}
 
 		// Some constraints
-		if(thumbInX < 0)
+		if (thumbInX < 0) {
 			thumbInX = 0;
+		}
 		
-		if(thumbOutX < thumbInX)
+		if (thumbOutX < thumbInX) {
 			thumbOutX = thumbInX;
-
-		if(thumbOutX > getWidth())
+		}
+			
+		if (thumbOutX > getWidth()) {
 			thumbOutX = getWidth();
-
-		if(thumbInX > thumbOutX)
+		}
+		
+		if (thumbInX > thumbOutX) {
 			thumbInX = thumbOutX;
+		}
 		
 		invalidate();
 		
-		if(changeListener !=null){
+		if (changeListener != null) {
 			calculateThumbsValue();
 			changeListener.inOutValuesChanged(thumbInValue,thumbOutValue);
 		}
@@ -172,18 +177,19 @@ public class InOutPlayheadSeekBar extends SeekBar {
 	}
 	
 	private void calculateThumbsValue(){
-		thumbInValue = (100*(thumbInX))/(getWidth());
-		thumbOutValue = (100*(thumbOutX))/(getWidth());
+		thumbInValue = (int)((100*((float)thumbInX))/((float)getWidth()));
+		thumbOutValue = (int)((100*((float)thumbOutX))/((float)getWidth()));
+		Log.v(LOGTAG,"thumb in value: " + thumbInValue + " thumb out value: " + thumbOutValue);
 	}
 	
 	private void setThumbsValue(int thumbInValue, int thumbOutValue) {
-		thumbInX = (thumbInValue/100)*(getWidth());
-		thumbOutX = (thumbOutValue/100)*(getWidth());
+		thumbInX = (int)(((float)thumbInValue/(float)100)*(float)getWidth());
+		thumbOutX = (int)(((float)thumbOutValue/(float)100)*(float)getWidth());
+		Log.v(LOGTAG,"thumbInX: " + thumbInX + " thumbOutX: " + thumbOutX);
 		calculateThumbsValue();
 	}
 		
 	interface InOutPlayheadSeekBarChangeListener {
 		void inOutValuesChanged(int thumbInValue,int thumbOutValue);
 	}	
-
 }
