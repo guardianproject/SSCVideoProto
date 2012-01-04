@@ -338,7 +338,7 @@ public class ObscuraVideoCam extends Activity implements OnTouchListener, OnClic
 	    	Log.v(LOGTAG,"In doInBackground:recordingFile: " + recordingFile.getPath());
 	    	Log.v(LOGTAG,"In doInBackground:savePath: " + savePath.getPath());
 
-			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight,camcorderProfile.videoFrameRate);
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, camcorderProfile.videoFrameWidth, camcorderProfile.videoFrameHeight,camcorderProfile.videoFrameRate,camcorderProfile.videoBitRate/1000);
 	        
 	        wl.release();
 		     
