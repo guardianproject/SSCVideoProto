@@ -449,7 +449,7 @@ public class VideoEditor extends Activity implements
     		obscuredCanvas.drawBitmap(bitmapCornerLR, paintingRect.right-(REGION_CORNER_SIZE/2), paintingRect.bottom-(REGION_CORNER_SIZE/2), obscuredPaint);
     	    
     	} else {
-    		obscuredPaint.setColor(Color.BLACK);
+    		obscuredPaint.setColor(Color.YELLOW);
     		obscuredCanvas.drawRect(region.getBounds(), obscuredPaint);
     	}
 	}
@@ -502,7 +502,7 @@ public class VideoEditor extends Activity implements
 			Log.v(LOGTAG,"Seeking To: " + (int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
 			mediaPlayer.seekTo((int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
 			Log.v(LOGTAG,"MediaPlayer Position: " + mediaPlayer.getCurrentPosition());
-			// Attempt to get the player to update it's view
+			// Attempt to get the player to update it's view - NOT WORKING
 			if (!mediaPlayer.isPlaying()) {
 				mediaPlayer.start();
 				mediaPlayer.pause();
@@ -556,6 +556,8 @@ public class VideoEditor extends Activity implements
 						{
 							
 							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
+							obscureRegions.add(tempRegion);
+							
 							Log.v(LOGTAG,"Creating a new tempRegion");
 							
 							Log.v(LOGTAG,"startTime: " + tempRegion.startTime + " duration: " + mediaPlayer.getDuration() + " math startTime/duration*100: " + (int)((float)tempRegion.startTime/(float)mediaPlayer.getDuration()*100));
@@ -580,7 +582,6 @@ public class VideoEditor extends Activity implements
 						
 						// Should show the menu, stopping region for now
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
-						obscureRegions.add(tempRegion);
 						
 						tempRegion = null;
 						
@@ -601,7 +602,6 @@ public class VideoEditor extends Activity implements
 						
 						long previousEndTime = tempRegion.endTime;
 						tempRegion.endTime = mediaPlayer.getCurrentPosition();
-						obscureRegions.add(tempRegion);
 						
 						ObscureRegion lastRegion = tempRegion;
 						tempRegion = null;
@@ -612,16 +612,21 @@ public class VideoEditor extends Activity implements
 							// Create new region with moved coordinates
 							if (regionCornerMode == CORNER_UPPER_LEFT) {
 								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
+								obscureRegions.add(tempRegion);
 							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
 								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
+								obscureRegions.add(tempRegion);
 							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
 								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
+								obscureRegions.add(tempRegion);
 							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
 								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
+								obscureRegions.add(tempRegion);
 							}
 						} else {		
 							// No Corner
 							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
+							obscureRegions.add(tempRegion);
 						}
 						
 						if (tempRegion != null) {
@@ -786,7 +791,8 @@ public class VideoEditor extends Activity implements
 			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
 			wl.acquire();
 	        
-			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), 15);
+			// Could make some high/low quality presets	
+			ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), 15, 300);
 	        
 	        wl.release();
 		     
