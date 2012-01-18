@@ -113,7 +113,7 @@ public class VideoEditor extends Activity implements
 	ImageButton playPauseButton;
 	
 	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
-	private ObscureRegion tempRegion;
+	private ObscureRegion activeRegion;
 	
 	ProcessVideo processVideo;
 
@@ -406,15 +406,15 @@ public class VideoEditor extends Activity implements
 			if (region.existsInTime(mediaPlayer.getCurrentPosition())) {
 				// Draw this region
 				//Log.v(LOGTAG,mediaPlayer.getCurrentPosition() + " Drawing a region: " + region.getBounds().left + " " + region.getBounds().top + " " + region.getBounds().right + " " + region.getBounds().bottom);
-				if (region != tempRegion) {
+				if (region != activeRegion) {
 					displayRegion(region,false);
 				}
 			}
 		}
 		
-		if (tempRegion != null && tempRegion.existsInTime(mediaPlayer.getCurrentPosition())) {
-			displayRegion(tempRegion,true);
-			//displayRect(tempRegion.getBounds(), selectedPaint);
+		if (activeRegion != null && activeRegion.existsInTime(mediaPlayer.getCurrentPosition())) {
+			displayRegion(activeRegion,true);
+			//displayRect(activeRegion.getBounds(), selectedPaint);
 		}
 		
 		regionsView.invalidate();
@@ -522,48 +522,57 @@ public class VideoEditor extends Activity implements
 					currentNumFingers = 1;
 					
 					// If we have a region in creation/editing and we touch within it
-					if (tempRegion != null && tempRegion.getRectF().contains(x, y)) {
+					if (activeRegion != null && activeRegion.getRectF().contains(x, y)) {
 
 						// Should display menu, unless they move
 						showMenu = true;
 						
 						// Are we on a corner?
-						regionCornerMode = getRegionCornerMode(tempRegion, x, y);
+						regionCornerMode = getRegionCornerMode(activeRegion, x, y);
 						
-						Log.v(LOGTAG,"Touched tempRegion");
+						Log.v(LOGTAG,"Touched activeRegion");
 																		
 					} else {
 					
 						showMenu = false;
 						
-						tempRegion = findRegion(event);
+						ObscureRegion previouslyActiveRegion = activeRegion;
+						activeRegion = findRegion(event);
 						
-						if (tempRegion != null)
+						if (activeRegion != null)
 						{
-							// Display menu unless they move
-							showMenu = true;
-							
-							// Are we on a corner?
-							regionCornerMode = getRegionCornerMode(tempRegion, x, y);
-							
-							// Show in and out points
-							progressBar.setThumbsActive((int)(tempRegion.startTime/mediaPlayer.getDuration()*100), (int)(tempRegion.endTime/mediaPlayer.getDuration()*100));
-							
-							// They are interacting with the active region
-							Log.v(LOGTAG,"Touched an existing region");
+							if (previouslyActiveRegion == activeRegion)
+							{
+								// Display menu unless they move
+								showMenu = true;
+								
+								// Are we on a corner?
+								regionCornerMode = getRegionCornerMode(activeRegion, x, y);
+								
+								// Show in and out points
+								progressBar.setThumbsActive((int)(activeRegion.startTime/mediaPlayer.getDuration()*100), (int)(activeRegion.endTime/mediaPlayer.getDuration()*100));
+
+								// They are interacting with the active region
+								Log.v(LOGTAG,"Touched an active region");
+							}
+							else
+							{
+								// They are interacting with the active region
+								Log.v(LOGTAG,"Touched an existing region, make it active");
+							}
 						}
 						else 
 						{
 							
-							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
-							obscureRegions.add(tempRegion);
+							activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),mediaPlayer.getDuration(),x,y);
+							obscureRegions.add(activeRegion);
 							
-							Log.v(LOGTAG,"Creating a new tempRegion");
+							Log.v(LOGTAG,"Creating a new activeRegion");
 							
-							Log.v(LOGTAG,"startTime: " + tempRegion.startTime + " duration: " + mediaPlayer.getDuration() + " math startTime/duration*100: " + (int)((float)tempRegion.startTime/(float)mediaPlayer.getDuration()*100));
+							Log.v(LOGTAG,"startTime: " + activeRegion.startTime + " duration: " + mediaPlayer.getDuration() + " math startTime/duration*100: " + (int)((float)activeRegion.startTime/(float)mediaPlayer.getDuration()*100));
 							
 							// Show in and out points
-							progressBar.setThumbsActive((int)((double)tempRegion.startTime/(double)mediaPlayer.getDuration()*100), (int)((double)tempRegion.endTime/(double)mediaPlayer.getDuration()*100));
+							progressBar.setThumbsActive((int)((double)activeRegion.startTime/(double)mediaPlayer.getDuration()*100), (int)((double)activeRegion.endTime/(double)mediaPlayer.getDuration()*100));
 
 						}
 					}
@@ -578,12 +587,12 @@ public class VideoEditor extends Activity implements
 					
 					if (showMenu) {
 						
-						Log.v(LOGTAG,"Touch Up: Show Menu - Really finalizing tempRegion");
+						Log.v(LOGTAG,"Touch Up: Show Menu - Really finalizing activeRegion");
 						
 						// Should show the menu, stopping region for now
-						tempRegion.endTime = mediaPlayer.getCurrentPosition();
+						activeRegion.endTime = mediaPlayer.getCurrentPosition();
 						
-						tempRegion = null;
+						activeRegion = null;
 						
 						// Hide in and out points
 						progressBar.setThumbsInactive();
@@ -597,65 +606,65 @@ public class VideoEditor extends Activity implements
 					// Calculate distance moved
 					showMenu = false;
 					
-					if (tempRegion != null && mediaPlayer.getCurrentPosition() > tempRegion.startTime) {
-						Log.v(LOGTAG,"Moving a tempRegion");
+					if (activeRegion != null && mediaPlayer.getCurrentPosition() > activeRegion.startTime) {
+						Log.v(LOGTAG,"Moving a activeRegion");
 						
-						long previousEndTime = tempRegion.endTime;
-						tempRegion.endTime = mediaPlayer.getCurrentPosition();
+						long previousEndTime = activeRegion.endTime;
+						activeRegion.endTime = mediaPlayer.getCurrentPosition();
 						
-						ObscureRegion lastRegion = tempRegion;
-						tempRegion = null;
+						ObscureRegion lastRegion = activeRegion;
+						activeRegion = null;
 						
 						if (regionCornerMode != CORNER_NONE) {
 				
 							//moveRegion(float _sx, float _sy, float _ex, float _ey)
 							// Create new region with moved coordinates
 							if (regionCornerMode == CORNER_UPPER_LEFT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
-								obscureRegions.add(tempRegion);
+								activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y,lastRegion.ex,lastRegion.ey);
+								obscureRegions.add(activeRegion);
 							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
-								obscureRegions.add(tempRegion);
+								activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,lastRegion.sy,lastRegion.ex,y);
+								obscureRegions.add(activeRegion);
 							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
-								obscureRegions.add(tempRegion);
+								activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,y,x,lastRegion.ey);
+								obscureRegions.add(activeRegion);
 							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
-								tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
-								obscureRegions.add(tempRegion);
+								activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,lastRegion.sx,lastRegion.sy,x,y);
+								obscureRegions.add(activeRegion);
 							}
 						} else {		
 							// No Corner
-							tempRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
-							obscureRegions.add(tempRegion);
+							activeRegion = new ObscureRegion(mediaPlayer.getDuration(), mediaPlayer.getCurrentPosition(),previousEndTime,x,y);
+							obscureRegions.add(activeRegion);
 						}
 						
-						if (tempRegion != null) {
+						if (activeRegion != null) {
 							// Show in and out points
-							progressBar.setThumbsActive((int)(tempRegion.startTime/mediaPlayer.getDuration()*100), (int)(tempRegion.endTime/mediaPlayer.getDuration()*100));
+							progressBar.setThumbsActive((int)(activeRegion.startTime/mediaPlayer.getDuration()*100), (int)(activeRegion.endTime/mediaPlayer.getDuration()*100));
 						}
 						
-					} else if (tempRegion != null) {
-						Log.v(LOGTAG,"Moving tempRegion start time");
+					} else if (activeRegion != null) {
+						Log.v(LOGTAG,"Moving activeRegion start time");
 						
 						if (regionCornerMode != CORNER_NONE) {
 							
 							// Just move region, we are at begin time
 							if (regionCornerMode == CORNER_UPPER_LEFT) {
-								tempRegion.moveRegion(x,y,tempRegion.ex,tempRegion.ey);
+								activeRegion.moveRegion(x,y,activeRegion.ex,activeRegion.ey);
 							} else if (regionCornerMode == CORNER_LOWER_LEFT) {
-								tempRegion.moveRegion(x,tempRegion.sy,tempRegion.ex,y);
+								activeRegion.moveRegion(x,activeRegion.sy,activeRegion.ex,y);
 							} else if (regionCornerMode == CORNER_UPPER_RIGHT) {
-								tempRegion.moveRegion(tempRegion.sx,y,x,tempRegion.ey);
+								activeRegion.moveRegion(activeRegion.sx,y,x,activeRegion.ey);
 							} else if (regionCornerMode == CORNER_LOWER_RIGHT) {
-								tempRegion.moveRegion(tempRegion.sx,tempRegion.sy,x,y);
+								activeRegion.moveRegion(activeRegion.sx,activeRegion.sy,x,y);
 							}
 						} else {		
 							// No Corner
-							tempRegion.moveRegion(x, y);
+							activeRegion.moveRegion(x, y);
 						}
 						
 						// Show in and out points
-						progressBar.setThumbsActive((int)(tempRegion.startTime/mediaPlayer.getDuration()*100), (int)(tempRegion.endTime/mediaPlayer.getDuration()*100));
+						progressBar.setThumbsActive((int)(activeRegion.startTime/mediaPlayer.getDuration()*100), (int)(activeRegion.endTime/mediaPlayer.getDuration()*100));
 
 					}
 					
@@ -852,9 +861,9 @@ public class VideoEditor extends Activity implements
 
 	@Override
 	public void inOutValuesChanged(int thumbInValue, int thumbOutValue) {
-		if (tempRegion != null) {
-			tempRegion.startTime = thumbInValue;
-			tempRegion.endTime = thumbOutValue;
+		if (activeRegion != null) {
+			activeRegion.startTime = thumbInValue;
+			activeRegion.endTime = thumbOutValue;
 		}
 	}	
 }
