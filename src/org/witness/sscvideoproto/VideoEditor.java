@@ -14,6 +14,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Vector;
 
+import net.londatiga.android.ActionItem;
+import net.londatiga.android.QuickAction;
+import net.londatiga.android.QuickAction.OnActionItemClickListener;
+
 import org.witness.sscvideoproto.InOutPlayheadSeekBar.InOutPlayheadSeekBarChangeListener;
 
 import android.app.Activity;
@@ -36,6 +40,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.media.MediaPlayer;
@@ -70,7 +75,7 @@ public class VideoEditor extends Activity implements
 						OnBufferingUpdateListener, OnPreparedListener, OnSeekCompleteListener,
 						OnVideoSizeChangedListener, SurfaceHolder.Callback,
 						MediaController.MediaPlayerControl, OnTouchListener, OnClickListener,
-						InOutPlayheadSeekBarChangeListener {
+						InOutPlayheadSeekBarChangeListener, OnActionItemClickListener {
 
 	public static final String LOGTAG = "VIDEOEDITOR";
 	public static final String PACKAGENAME = "org.witness.sscvideoproto";
@@ -121,6 +126,9 @@ public class VideoEditor extends Activity implements
 	File redactSettingsFile;
 	
 	private Handler mHandler = new Handler();
+	
+	QuickAction popupMenu;
+	ActionItem[] popupMenuItems;
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -588,15 +596,8 @@ public class VideoEditor extends Activity implements
 					if (showMenu) {
 						
 						Log.v(LOGTAG,"Touch Up: Show Menu - Really finalizing activeRegion");
-						
-						// Should show the menu, stopping region for now
-						activeRegion.endTime = mediaPlayer.getCurrentPosition();
-						
-						activeRegion = null;
-						
-						// Hide in and out points
-						progressBar.setThumbsInactive();
-						
+						inflatePopup(false);
+												
 						showMenu = false;
 					}
 					
@@ -864,6 +865,66 @@ public class VideoEditor extends Activity implements
 		if (activeRegion != null) {
 			activeRegion.startTime = thumbInValue;
 			activeRegion.endTime = thumbOutValue;
+		}
+	}
+	
+	public void inflatePopup(boolean showDelayed) {
+		if (popupMenu == null)
+			initPopup();
+
+		popupMenu.show(regionsView, (int)activeRegion.getBounds().centerX(), (int)activeRegion.getBounds().centerY());
+	}
+	
+	private void initPopup ()
+	{
+		popupMenu = new QuickAction(this);
+
+		popupMenuItems = new ActionItem[5];
+		
+		popupMenuItems[0] = new ActionItem();
+		popupMenuItems[0].setTitle("Set In Point");
+		popupMenuItems[0].setIcon(getResources().getDrawable(R.drawable.icon));			
+
+		popupMenuItems[1] = new ActionItem();
+		popupMenuItems[1].setTitle("Set Out Point");
+		popupMenuItems[1].setIcon(getResources().getDrawable(R.drawable.icon));			
+
+		popupMenuItems[2] = new ActionItem();
+		popupMenuItems[2].setTitle("Remove Region");
+		popupMenuItems[2].setIcon(getResources().getDrawable(R.drawable.icon));			
+
+		for (int i=0; i < popupMenuItems.length; i++) {
+			if (popupMenuItems[i] != null) {
+				popupMenu.addActionItem(popupMenuItems[i]);
+			}
+		}
+			
+		popupMenu.setOnActionItemClickListener(this);
+	}
+
+	//Popup menu item clicked
+	@Override
+	public void onItemClick(int pos) {
+		
+		switch (pos) {
+			case 0:
+				// set in point
+				activeRegion.startTime = mediaPlayer.getCurrentPosition();
+				break;
+			case 1:
+				// set out point
+				activeRegion.endTime = mediaPlayer.getCurrentPosition();
+				activeRegion = null;
+				
+				// Hide in and out points
+				progressBar.setThumbsInactive();
+				
+				break;
+			case 2:
+				// Remove region
+				obscureRegions.remove(activeRegion);
+				activeRegion = null;
+				break;
 		}
 	}	
 }
