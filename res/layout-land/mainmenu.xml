@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/FrameLayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/sscbg"
+    android:paddingTop="20sp" >
+
+	<LinearLayout
+	    android:layout_width="fill_parent"
+	    android:layout_height="fill_parent"
+	    android:orientation="horizontal" >
+
+		 <ImageView
+		     android:id="@+id/editorImageView"
+		     android:layout_width="wrap_content"
+		     android:layout_height="wrap_content"
+		     android:layout_gravity="center_vertical|center_horizontal"
+		     android:layout_margin="20dp"
+		     android:src="@drawable/icon_sscvideo" />
+	
+		<LinearLayout android:orientation="vertical" 
+			android:layout_width="fill_parent" 
+			android:layout_height="fill_parent" android:gravity="center_vertical|center_horizontal">
+			<Button  android:id="@+id/CaptureVideoButton" 
+				android:text="Capture Video" 
+				android:layout_height="90dp"
+				android:drawable="@drawable/ic_camera" android:layout_width="125dp">
+			</Button>
+			<Button  android:id="@+id/ChooseVideoButton" 
+				android:text="Select Video" 
+				android:layout_height="90dp"
+				android:drawable="@drawable/ic_gallery" android:layout_width="125dp">
+			</Button>
+		</LinearLayout>
+	</LinearLayout>
+</FrameLayout>
