@@ -1,6 +1,7 @@
 package net.londatiga.android;
 
-import org.witness.sscvideoproto.*;
+import org.witness.ssc.video.R;
+
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -10,6 +11,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -71,7 +73,7 @@ public class QuickAction extends PopupWindows {
 		//This was previously defined on show() method, moved here to prevent force close that occured
 		//when tapping fastly on a view to show quickaction dialog.
 		//Thanx to zammbi (github.com/zammbi)
-		mRootView.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+		mRootView.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 		
 		setContentView(mRootView);
 	}

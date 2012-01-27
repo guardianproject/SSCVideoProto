@@ -1,13 +1,12 @@
 package net.londatiga.android;
 
-import org.witness.sscvideoproto.R;
+
+import org.witness.ssc.video.R;
 
 import android.content.Context;
-
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -15,7 +14,7 @@ import android.view.View;
 import android.view.View.OnTouchListener;
 import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
-
+import android.widget.FrameLayout;
 import android.widget.PopupWindow;
 
 public class CustomPopupWindow {
@@ -177,7 +176,7 @@ public class CustomPopupWindow {
 				new Rect(location[0], location[1], location[0] + anchor.getWidth(), location[1]
 					+ anchor.getHeight());
 
-		root.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+		root.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 		root.measure(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
 		
 		int rootWidth 		= root.getMeasuredWidth();
