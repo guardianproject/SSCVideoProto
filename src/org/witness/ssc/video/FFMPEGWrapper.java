@@ -45,14 +45,13 @@ public class FFMPEGWrapper {
 	
 			String line;
 			
-			//Log.d(ObscuraApp.LOGTAG,"***Starting Command***");
+			Log.d(ObscuraApp.LOGTAG,"***Starting Command***");
 			while ((line = reader.readLine()) != null)
 			{
-				//Log.d(ObscuraApp.LOGTAG,"***"+line+"***");
+				Log.d(ObscuraApp.LOGTAG,"***"+line+"***");
 			}
-			//Log.d(ObscuraApp.LOGTAG,"***Ending Command***");
+			Log.d(ObscuraApp.LOGTAG,"***Ending Command***");
 
-			
 			
 		    if (process != null) {
 		    	process.destroy();        

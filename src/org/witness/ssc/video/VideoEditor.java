@@ -400,13 +400,21 @@ public class VideoEditor extends Activity implements
 	
 	private Runnable updatePlayProgress = new Runnable() {
 	   public void run() {
-		   if (mediaPlayer != null) {
-			   if (mediaPlayer.isPlaying()) {
-				   progressBar.setProgress((int)(((float)mediaPlayer.getCurrentPosition()/(float)mediaPlayer.getDuration())*100));
-			   }   
-			   updateRegionDisplay();
+		   
+		   try
+		   {
+			   if (mediaPlayer != null) {
+				   if (mediaPlayer.isPlaying()) {
+					   progressBar.setProgress((int)(((float)mediaPlayer.getCurrentPosition()/(float)mediaPlayer.getDuration())*100));
+				   }   
+				   updateRegionDisplay();
+			   }
+			   mHandler.postDelayed(this, 100);
 		   }
-		   mHandler.postDelayed(this, 100);
+		   catch (Exception e)
+		   {
+			   //must not be playing anymore
+		   }
 	   }
 	};		
 	
@@ -941,6 +949,12 @@ public class VideoEditor extends Activity implements
 	protected void onPause() {
 
 		super.onPause();
-		mediaPlayer.pause();
+		mediaPlayer.reset();
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		mediaPlayer.release();
 	}	
 }
