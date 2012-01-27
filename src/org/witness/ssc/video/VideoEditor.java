@@ -277,7 +277,6 @@ public class VideoEditor extends Activity implements
 		return false;
 	}
 
-	@Override
 	public void onPrepared(MediaPlayer mp) {
 		Log.v(LOGTAG, "onPrepared Called");
 
@@ -285,7 +284,6 @@ public class VideoEditor extends Activity implements
 		start();	
 	}
 
-	@Override
 	public void onSeekComplete(MediaPlayer mp) {
 		Log.v(LOGTAG, "onSeekComplete Called");
 		
@@ -296,7 +294,6 @@ public class VideoEditor extends Activity implements
 		}
 	}
 
-	@Override
 	public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
 		Log.v(LOGTAG, "onVideoSizeChanged Called");
 
@@ -333,22 +330,18 @@ public class VideoEditor extends Activity implements
 	    videoView.setLayoutParams(lp);     
 	}
 
-	@Override
 	public void onBufferingUpdate(MediaPlayer mp, int bufferedPercent) {
 		Log.v(LOGTAG, "MediaPlayer Buffering: " + bufferedPercent + "%");
 	}
 
-	@Override
 	public boolean canPause() {
 		return true;
 	}
 
-	@Override
 	public boolean canSeekBackward() {
 		return true;
 	}
 
-	@Override
 	public boolean canSeekForward() {
 		return true;
 	}
