@@ -3,57 +3,51 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="fill_parent"
 	android:layout_height="fill_parent">
-  	<SurfaceView 
+  	
+  	<VideoView 
   		android:id="@+id/SurfaceView" 
 	  	android:layout_height="wrap_content" 
-  		android:layout_width="wrap_content">
-  	</SurfaceView>
+  		android:layout_width="fill_parent"
+  		android:layout_gravity="center"
+  		/>
 	<ImageView 
 		android:id="@+id/VideoEditorImageView" 
 		android:layout_width="fill_parent" 
-		android:layout_height="fill_parent">
-	</ImageView>
-  	<LinearLayout 
-  		android:id="@+id/OuterLinearLayout" 
-  		android:layout_width="fill_parent" 
-  		android:layout_height="fill_parent"
-  		android:gravity="bottom"
-  		android:orientation="vertical">
-  		<LinearLayout
-  			android:id="@+id/InnerLinearLayout"
-  			android:layout_width="fill_parent"
-  			android:layout_height="wrap_content"
-  			android:orientation="horizontal"
-  			android:gravity="center">
-  			<ImageButton 
-  				android:layout_width="wrap_content" 
-  				android:id="@+id/PlayPauseImageButton" 
-  				android:src="@android:drawable/ic_media_play" 
-  				android:layout_height="wrap_content">
-  			</ImageButton> 	
-  			<LinearLayout
-  				android:id="@+id/ProgressBarLinearLayout"
-  				android:layout_width="fill_parent"
-  				android:layout_height="wrap_content"
-  				android:orientation="vertical"
-  				android:gravity="center"
-  				android:layout_margin="20dp">
-				<org.witness.sscvideoproto.InOutPlayheadSeekBar 
-					android:id="@+id/InOutPlayheadSeekBar" 
-					android:layout_height="30dp" 
-					android:layout_width="fill_parent" 
-					android:gravity="center" 
-					android:indeterminate="false" 
-					android:indeterminateOnly="false" 
-					android:secondaryProgress="0" 
-					android:progressDrawable="@android:drawable/progress_horizontal">
-				</org.witness.sscvideoproto.InOutPlayheadSeekBar>
-				<org.witness.sscvideoproto.RegionBarArea
-					android:id="@+id/RegionBarArea"
-					android:layout_height="30dp" 
-					android:layout_width="fill_parent">
-				</org.witness.sscvideoproto.RegionBarArea>
-			</LinearLayout> 
-		</LinearLayout>		
-  	</LinearLayout>
+		android:layout_height="fill_parent"
+		  		android:layout_gravity="center"
+		/>
+ 		<LinearLayout
+ 			android:id="@+id/InnerLinearLayout"
+ 			android:layout_width="fill_parent"
+ 			android:layout_height="30dp"
+ 			android:orientation="horizontal"
+ 			android:layout_gravity="bottom" 	
+ 			>
+ 			<ImageButton 
+ 				android:layout_width="wrap_content" 
+ 				android:id="@+id/PlayPauseImageButton" 
+ 				android:src="@android:drawable/ic_media_play" 
+ 				android:layout_height="wrap_content" 				
+ 				/>	
+			<org.witness.ssc.video.InOutPlayheadSeekBar 
+				android:id="@+id/InOutPlayheadSeekBar" 
+				android:layout_height="fill_parent" 
+				android:layout_width="0dip" 
+				android:layout_weight="1"
+				android:gravity="center" 
+				android:indeterminate="false" 
+				android:indeterminateOnly="false" 
+				android:secondaryProgress="0" 
+				android:progressDrawable="@android:drawable/progress_horizontal"
+				/>
+			<!-- 
+			<org.witness.sscvideoproto.RegionBarArea
+				android:id="@+id/RegionBarArea"
+				android:layout_height="30dp" 
+				android:layout_width="fill_parent">
+			</org.witness.sscvideoproto.RegionBarArea>
+			 -->
+	
+	</LinearLayout>		
+  	
 </FrameLayout>
