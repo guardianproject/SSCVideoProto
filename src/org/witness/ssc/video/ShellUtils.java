@@ -205,7 +205,7 @@ public class ShellUtils {
 		if (waitFor)
 		{
 			
-			final char buf[] = new char[10];
+			final char buf[] = new char[20];
 			
 			// Consume the "stdout"
 			InputStreamReader reader = new InputStreamReader(proc.getInputStream());

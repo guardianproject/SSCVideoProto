@@ -19,6 +19,7 @@ import net.londatiga.android.QuickAction;
 import net.londatiga.android.QuickAction.OnActionItemClickListener;
 
 import org.witness.ssc.video.InOutPlayheadSeekBar.InOutPlayheadSeekBarChangeListener;
+import org.witness.ssc.video.ShellUtils.ShellCallback;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -49,6 +50,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -116,11 +118,37 @@ public class VideoEditor extends Activity implements
 	private Vector<ObscureRegion> obscureRegions = new Vector<ObscureRegion>();
 	private ObscureRegion activeRegion;
 	
-	ProcessVideo processVideo;
-
 	FFMPEGWrapper ffmpeg;
 	
-	private Handler mHandler = new Handler();
+	private Handler mHandler = new Handler()
+	{
+		 public void handleMessage(Message msg) {
+	            switch (msg.what) {
+	                case 1: //status
+
+	                       progressDialog.setMessage(msg.getData().getString("status"));
+	                        
+	                    break;
+	               
+	                case 2: //cancelled
+	                	mCancelled = true;
+	                		killVideoProcessor();
+	                	
+	                	break;
+	                	
+	                case 3: //completed
+
+	        			if (!mCancelled)
+	        				showPlayShareDialog();
+	                	
+	                	break;
+	                default:
+	                    super.handleMessage(msg);
+	            }
+	        }
+	};
+	
+	private boolean mCancelled = false;
 	
 	QuickAction popupMenu;
 	ActionItem[] popupMenuItems;
@@ -137,7 +165,6 @@ public class VideoEditor extends Activity implements
 
 		setContentView(R.layout.videoeditor);
 		
-
 		fileExternDir = new File(Environment.getExternalStorageDirectory(),getString(R.string.app_name));
 		if (!fileExternDir.exists())
 			fileExternDir.mkdirs();
@@ -169,18 +196,7 @@ public class VideoEditor extends Activity implements
 		mediaPlayer.setLooping(false);
 		mediaPlayer.setScreenOnWhilePlaying(true);		
 		
-		try {
-			mediaPlayer.setDataSource(originalVideoUri.toString());
-		} catch (IllegalArgumentException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		} catch (IllegalStateException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		} catch (IOException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		}
+		
 				
 		progressBar = (InOutPlayheadSeekBar) this.findViewById(R.id.InOutPlayheadSeekBar);
 
@@ -223,6 +239,7 @@ public class VideoEditor extends Activity implements
 		Log.v(LOGTAG, "surfaceCreated Called");
 		if (mediaPlayer != null)
 		{
+		
 			mediaPlayer.setDisplay(surfaceHolder);
 			
 			try {
@@ -788,19 +805,28 @@ public class VideoEditor extends Activity implements
 
     private void processVideo() {
     	
-    	//mediaPlayer.stop();
+    	mCancelled = false;
     	
+    	mediaPlayer.stop();
+    	//mediaPlayer.release();
     	
     	progressDialog = ProgressDialog.show(this, "", "Processing. Please wait...", true);
+    	progressDialog.setCancelable(true);
+    	
+    	 Message msg = mHandler.obtainMessage(2);
+         msg.getData().putString("status","cancelled");
+         progressDialog.setCancelMessage(msg);
     	
 		// Convert to video
-		processVideo = new ProcessVideo();
-		processVideo.execute();
+		Thread thread = new Thread (runProcessVideo);
+		thread.setPriority(Thread.MAX_PRIORITY);
+		thread.start();
     }
     
-	private class ProcessVideo extends AsyncTask<Void, Integer, Void> {
-		@Override
-		protected Void doInBackground(Void... params) {	
+	Runnable runProcessVideo = new Runnable () {
+		
+		public void run ()
+		{
 
 			PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 			PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
@@ -820,10 +846,33 @@ public class VideoEditor extends Activity implements
 				{
 
 					@Override
-					public void shellOut(char[] msg) {
+					public void shellOut(char[] shellout) {
 						
-						System.out.print(msg);
+						String line = new String(shellout);
+						
 						//progressDialog.setMessage(new String(msg));
+						//Duration: 00:00:00.99,
+						//time=00:00:00.00
+						int idx1;
+						String newStatus = null;
+						
+						if ((idx1 = line.indexOf("Duration:"))!=-1)
+						{
+							int idx2 = line.indexOf(",", idx1);
+							newStatus = line.substring(idx1,idx2);
+						}
+						else if ((idx1 = line.indexOf("time="))!=-1)
+						{
+							int idx2 = line.indexOf(" ", idx1);
+							newStatus = line.substring(idx1,idx2);
+						}
+						
+						if (newStatus != null)
+						{
+						 Message msg = mHandler.obtainMessage(1);
+				         msg.getData().putString("status",line);
+				         mHandler.sendMessage(msg);
+						}
 					}
 					
 				};
@@ -838,20 +887,14 @@ public class VideoEditor extends Activity implements
 			
 			wl.release();
 		     
-	        return null;
+			Message msg = mHandler.obtainMessage(3);
+	         msg.getData().putString("status","complete");
+	         mHandler.sendMessage(msg);
+	         
 		}
 		
-		@Override
-	    protected void onProgressUpdate(Integer... progress) {
-			Log.v(LOGTAG,"Progress: " + progress[0]);
-	    }
 		
-		@Override
-	    protected void onPostExecute(Void result) {
-	    	 Log.v(LOGTAG,"***ON POST EXECUTE***");
-	    	 showPlayShareDialog();
-	     }
-	}
+	};
 	
 	private void showPlayShareDialog() {
 		progressDialog.cancel();
@@ -861,11 +904,13 @@ public class VideoEditor extends Activity implements
 			.setCancelable(true)
 			.setPositiveButton("Play", new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog, int id) {
+					
 					playVideo();
 				}
 			})
 			.setNegativeButton("Share", new DialogInterface.OnClickListener() {
 	            public void onClick(DialogInterface dialog, int id) {
+	            	
 	            	shareVideo();
 	            }
 		    });
@@ -969,6 +1014,56 @@ public class VideoEditor extends Activity implements
 	@Override
 	protected void onStop() {
 		super.onStop();
-		mediaPlayer.release();
 	}	
+	
+	private void killVideoProcessor ()
+	{
+		int killDelayMs = 300;
+
+		String ffmpegBin = new File(getDir("bin",0),"ffmpeg").getAbsolutePath();
+
+		int procId = -1;
+		
+		while ((procId = ShellUtils.findProcessId(ffmpegBin)) != -1)
+		{
+			
+			Log.d(LOGTAG, "Found PID=" + procId + " - killing now...");
+			
+			String[] cmd = { ShellUtils.SHELL_CMD_KILL + ' ' + procId + "" };
+			
+			try { 
+			ShellUtils.doShellCommand(cmd,new ShellCallback ()
+			{
+
+				@Override
+				public void shellOut(char[] msg) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+			}, false, false);
+			Thread.sleep(killDelayMs); }
+			catch (Exception e){}
+		}
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		
+		try {
+			mediaPlayer.setDataSource(originalVideoUri.toString());
+		} catch (IllegalArgumentException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		} catch (IllegalStateException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		} catch (IOException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		}
+	}
+	
+
 }

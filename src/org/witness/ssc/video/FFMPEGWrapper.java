@@ -37,35 +37,28 @@ public class FFMPEGWrapper {
 	
 	
 	
-	private void execProcess(String cmd, ShellCallback sc) throws Exception {		
+	private void execProcess(String[] cmds, ShellCallback sc) throws Exception {		
         
-		boolean runAsRoot = false;
-		boolean waitFor = true;
 		
-		String[] cmds = {cmd};
-		ShellUtils.doShellCommand(cmds, sc, runAsRoot, waitFor);
-		
-		
-		/*
-	    	Process process = new ProcessBuilder(commands).redirectErrorStream(true).start();         	
+			ProcessBuilder pb = new ProcessBuilder(cmds);
+			pb.redirectErrorStream(true);
+	    	Process process = pb.start();      
+	    	
 			
-
-			OutputStream outputStream = process.getOutputStream();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 	
 			String line;
 			
-			Log.d(ObscuraApp.LOGTAG,"***Starting Command***");
 			while ((line = reader.readLine()) != null)
 			{
-				Log.d(ObscuraApp.LOGTAG,"***"+line+"***");
+				if (sc != null)
+					sc.shellOut(line.toCharArray());
 			}
-			Log.d(ObscuraApp.LOGTAG,"***Ending Command***");
 
 			
 		    if (process != null) {
 		    	process.destroy();        
-		    }*/
+		    }
 
 	}
 	
@@ -101,14 +94,7 @@ public class FFMPEGWrapper {
     					"-f", "mp4", savePath.getPath()+"/output.mp4"};
     	*/
     	
-    	StringBuffer cmdbuff = new StringBuffer();
-    	for (String cmd : ffmpegCommand)
-    	{
-    		cmdbuff.append(cmd);
-    		cmdbuff.append(' ');
-    	}
-    	
-    	execProcess(cmdbuff.toString(), sc);
+    	execProcess(ffmpegCommand, sc);
 	    
 	}
 	
