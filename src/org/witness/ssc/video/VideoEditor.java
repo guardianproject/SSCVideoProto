@@ -196,7 +196,18 @@ public class VideoEditor extends Activity implements
 		mediaPlayer.setLooping(false);
 		mediaPlayer.setScreenOnWhilePlaying(true);		
 		
-		
+		try {
+			mediaPlayer.setDataSource(originalVideoUri.toString());
+		} catch (IllegalArgumentException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		} catch (IllegalStateException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		} catch (IOException e) {
+			Log.v(LOGTAG, e.getMessage());
+			finish();
+		}
 				
 		progressBar = (InOutPlayheadSeekBar) this.findViewById(R.id.InOutPlayheadSeekBar);
 
@@ -807,7 +818,7 @@ public class VideoEditor extends Activity implements
     	
     	mCancelled = false;
     	
-    	mediaPlayer.stop();
+    	mediaPlayer.pause();
     	//mediaPlayer.release();
     	
     	progressDialog = ProgressDialog.show(this, "", "Processing. Please wait...", true);
@@ -837,9 +848,9 @@ public class VideoEditor extends Activity implements
 				if (ffmpeg == null)
 					ffmpeg = new FFMPEGWrapper(VideoEditor.this.getBaseContext());
 	
-				float sizeMult = .5f;
+				float sizeMult = .75f;
 				int frameRate = 15;
-				int bitRate = 250;
+				int bitRate = 300;
 				String format = "mp4";
 				
 				ShellUtils.ShellCallback sc = new ShellUtils.ShellCallback ()
@@ -935,7 +946,7 @@ public class VideoEditor extends Activity implements
 	
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		super.onActivityResult(requestCode, resultCode, intent);
-		showPlayShareDialog();
+		
 	}
 
 	@Override
@@ -1051,18 +1062,6 @@ public class VideoEditor extends Activity implements
 	protected void onResume() {
 		super.onResume();
 		
-		try {
-			mediaPlayer.setDataSource(originalVideoUri.toString());
-		} catch (IllegalArgumentException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		} catch (IllegalStateException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		} catch (IOException e) {
-			Log.v(LOGTAG, e.getMessage());
-			finish();
-		}
 	}
 	
 
