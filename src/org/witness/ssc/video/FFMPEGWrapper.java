@@ -70,13 +70,16 @@ public class FFMPEGWrapper {
 		    	
     	String ffmpegBin = new File(fileBinDir,"ffmpeg").getAbsolutePath();
     	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
+    	
     	String[] ffmpegCommand = {ffmpegBin, "-v", "10", "-y", "-i", inputFile.getPath(), 
-				"-vcodec", "libx264", "-b", kbitRate+"k", "-s",  (int)(width*sizeMult) + "x" + (int)(height*sizeMult), "-r", ""+frameRate,
+				"-vcodec", "libx264", 
+				"-b", kbitRate+"k", 
+				"-s",  (int)(width*sizeMult) + "x" + (int)(height*sizeMult), 
+				"-r", ""+frameRate,
 				"-an",
 				"-f", format,
 				"-vf","redact=" + redactSettingsFile.getAbsolutePath(),
 				outputFile.getPath()};
-    	
     	
     	//"-vf" , "redact=" + Environment.getExternalStorageDirectory().getPath() + "/" + PACKAGENAME + "/redact_unsort.txt",
 
