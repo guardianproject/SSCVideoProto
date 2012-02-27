@@ -15,7 +15,7 @@
 		     android:layout_width="wrap_content"
 		     android:layout_height="wrap_content"
 			android:layout_gravity="center_vertical|center_horizontal"		     
-		     android:src="@drawable/sscvideo512" />
+		     android:src="@drawable/ic_ssc" />
 		
 		<LinearLayout android:orientation="horizontal" 
 			android:layout_width="fill_parent" 
