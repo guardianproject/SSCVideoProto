@@ -15,7 +15,7 @@ public class ObscuraApp extends Activity implements OnClickListener {
 	    
 	public final static String LOGTAG = "ObscuraVid";
 		
-	final static int CAMERA_RESULT = 0;
+	final static int VIDEO_RESULT = 0;
 	final static int GALLERY_RESULT = 1;
 	final static int VIDEO_EDITOR = 2;
 	
@@ -53,8 +53,10 @@ public class ObscuraApp extends Activity implements OnClickListener {
 		} 
 		else if (v == captureVideoButton) 
 		{
-			Intent intent = new Intent(this,VideoCam.class);
-			startActivityForResult(intent, CAMERA_RESULT);
+			Intent intent = new Intent("android.media.action.VIDEO_CAMERA");
+
+			//Intent intent = new Intent(this,VideoCam.class);
+			startActivityForResult(intent, VIDEO_RESULT);
 		} 
 	}
 
@@ -85,9 +87,16 @@ public class ObscuraApp extends Activity implements OnClickListener {
 					Toast.makeText(this, "Unable to load video.", Toast.LENGTH_LONG).show();
 				}
 			}
-			else if (requestCode == CAMERA_RESULT)
+			else if (requestCode == VIDEO_RESULT)
 			{
-				// Nothing yet
+				uriVideoResult = intent.getData();
+
+				if (uriVideoResult != null)
+				{
+					Intent passingIntent = new Intent(this,VideoEditor.class);
+					passingIntent.setData(uriVideoResult);
+					startActivityForResult(passingIntent,VIDEO_EDITOR);
+				}
 			}
 		}		
 	}	

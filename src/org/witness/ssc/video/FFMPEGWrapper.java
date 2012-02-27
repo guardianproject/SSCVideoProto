@@ -13,6 +13,8 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Vector;
 
+import org.witness.ssc.video.ShellUtils.ShellCallback;
+
 import android.content.Context;
 import android.util.Log;
 
@@ -35,8 +37,16 @@ public class FFMPEGWrapper {
 	
 	
 	
-	private void execProcess(String[] commands) throws IOException {		
+	private void execProcess(String cmd, ShellCallback sc) throws Exception {		
         
+		boolean runAsRoot = false;
+		boolean waitFor = true;
+		
+		String[] cmds = {cmd};
+		ShellUtils.doShellCommand(cmds, sc, runAsRoot, waitFor);
+		
+		
+		/*
 	    	Process process = new ProcessBuilder(commands).redirectErrorStream(true).start();         	
 			
 
@@ -55,22 +65,22 @@ public class FFMPEGWrapper {
 			
 		    if (process != null) {
 		    	process.destroy();        
-		    }
+		    }*/
 
 	}
 	
 	public void processVideo(File redactSettingsFile, 
-			Vector<ObscureRegion> obscureRegions, File inputFile, File outputFile, 
-			int width, int height, int frameRate, int kbitRate, float sizeMult) throws IOException {
+			Vector<ObscureRegion> obscureRegions, File inputFile, File outputFile, String format, 
+			int width, int height, int frameRate, int kbitRate, float sizeMult, ShellCallback sc) throws Exception {
 		
 		writeRedactData(redactSettingsFile, obscureRegions, sizeMult);
 		    	
-    	String cmd = new File(fileBinDir,"ffmpeg").getAbsolutePath();
+    	String ffmpegBin = new File(fileBinDir,"ffmpeg").getAbsolutePath();
     	//ffmpeg -v 10 -y -i /sdcard/org.witness.sscvideoproto/videocapture1042744151.mp4 -vcodec libx264 -b 3000k -s 720x480 -r 30 -acodec copy -f mp4 -vf 'redact=/data/data/org.witness.sscvideoproto/redact_unsort.txt' /sdcard/org.witness.sscvideoproto/new.mp4
-    	String[] ffmpegCommand = {cmd, "-v", "10", "-y", "-i", inputFile.getPath(), 
+    	String[] ffmpegCommand = {ffmpegBin, "-v", "10", "-y", "-i", inputFile.getPath(), 
 				"-vcodec", "libx264", "-b", kbitRate+"k", "-s",  (int)(width*sizeMult) + "x" + (int)(height*sizeMult), "-r", ""+frameRate,
 				"-an",
-				"-f", "mp4",
+				"-f", format,
 				"-vf","redact=" + redactSettingsFile.getAbsolutePath(),
 				outputFile.getPath()};
     	
@@ -91,7 +101,14 @@ public class FFMPEGWrapper {
     					"-f", "mp4", savePath.getPath()+"/output.mp4"};
     	*/
     	
-    	execProcess(ffmpegCommand);
+    	StringBuffer cmdbuff = new StringBuffer();
+    	for (String cmd : ffmpegCommand)
+    	{
+    		cmdbuff.append(cmd);
+    		cmdbuff.append(' ');
+    	}
+    	
+    	execProcess(cmdbuff.toString(), sc);
 	    
 	}
 	

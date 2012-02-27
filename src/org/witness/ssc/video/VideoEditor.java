@@ -221,15 +221,17 @@ public class VideoEditor extends Activity implements
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
 		Log.v(LOGTAG, "surfaceCreated Called");
-		mediaPlayer.setDisplay(surfaceHolder);
-		
-		try {
-			mediaPlayer.prepareAsync();			
-		} catch (Exception e) {
-			Log.v(LOGTAG, "IllegalStateException " + e.getMessage());
-			finish();
+		if (mediaPlayer != null)
+		{
+			mediaPlayer.setDisplay(surfaceHolder);
+			
+			try {
+				mediaPlayer.prepareAsync();			
+			} catch (Exception e) {
+				Log.v(LOGTAG, "IllegalStateException " + e.getMessage());
+				finish();
+			}
 		}
-		
 	
 	}
 
@@ -241,7 +243,8 @@ public class VideoEditor extends Activity implements
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		Log.v(LOGTAG, "surfaceDestroyed Called");
-		mediaPlayer.stop();
+		//if (mediaPlayer != null)
+			//mediaPlayer.stop();
 	}
 
 	@Override
@@ -513,6 +516,11 @@ public class VideoEditor extends Activity implements
 
 		if (v == progressBar) {
 			// It's the progress bar/scrubber
+			if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+			    mediaPlayer.start();
+		    } else if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+		    	mediaPlayer.pause();
+		    }
 			
 			Log.v(LOGTAG,"" + event.getX() + " " + event.getX()/progressBar.getWidth());
 			Log.v(LOGTAG,"Seeking To: " + (int)(mediaPlayer.getDuration()*(float)(event.getX()/progressBar.getWidth())));
@@ -761,7 +769,7 @@ public class VideoEditor extends Activity implements
 		String processString = "Process Video";
 		
     	MenuItem processMenuItem = menu.add(Menu.NONE, PROCESS, Menu.NONE, processString);
-    	processMenuItem.setIcon(R.drawable.ic_menu_about);
+    	processMenuItem.setIcon(R.drawable.ic_menu_save);
     	
     	return true;
 	}
@@ -780,8 +788,8 @@ public class VideoEditor extends Activity implements
 
     private void processVideo() {
     	
-    	mediaPlayer.stop();
-    	mediaPlayer.reset();
+    	//mediaPlayer.stop();
+    	
     	
     	progressDialog = ProgressDialog.show(this, "", "Processing. Please wait...", true);
     	
@@ -806,9 +814,22 @@ public class VideoEditor extends Activity implements
 				float sizeMult = .5f;
 				int frameRate = 15;
 				int bitRate = 250;
+				String format = "mp4";
+				
+				ShellUtils.ShellCallback sc = new ShellUtils.ShellCallback ()
+				{
+
+					@Override
+					public void shellOut(char[] msg) {
+						
+						System.out.print(msg);
+						//progressDialog.setMessage(new String(msg));
+					}
+					
+				};
 				
 				// Could make some high/low quality presets	
-				ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), frameRate, bitRate, sizeMult);
+				ffmpeg.processVideo(redactSettingsFile, obscureRegions, recordingFile, saveFile, format, mediaPlayer.getVideoWidth(), mediaPlayer.getVideoHeight(), frameRate, bitRate, sizeMult, sc);
 			}
 			catch (Exception e)
 			{
